@@ -6,7 +6,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&order=created_at.desc&limit=1`;
 
-// CORS headers
+// CORS headers - allowing access from any origin
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -33,7 +33,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error(`Database query failed: ${response.status} ${response.statusText}`);
-      return new Response(JSON.stringify({ error: "Database query failed" }), { 
+      return new Response(JSON.stringify({ error: "Database query failed", status: response.status }), { 
         status: response.status, 
         headers: { 
           "Content-Type": "application/json",
@@ -83,7 +83,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("Server error:", err);
-    return new Response(JSON.stringify({ error: "Server error" }), { 
+    return new Response(JSON.stringify({ error: "Server error", details: String(err) }), { 
       status: 500,
       headers: { 
         "Content-Type": "application/json",
