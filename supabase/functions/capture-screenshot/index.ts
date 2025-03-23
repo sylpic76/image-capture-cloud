@@ -34,9 +34,15 @@ serve(async (req: Request) => {
       );
     }
 
-    // Generate a unique filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "");
-    const filename = `screen_${timestamp}.png`;
+    // Generate a unique filename with clean timestamp format (YYYYMMDD_HHmmss)
+    const now = new Date();
+    const dateStr = now.toISOString()
+      .replace(/[-:T.Z]/g, "") // Remove special characters
+      .slice(0, 14);        // Get YYYYMMDDHHMMSS
+    
+    // Format as screen_YYYYMMDD_HHmmss.png
+    const formattedDate = `${dateStr.slice(0,8)}_${dateStr.slice(8,14)}`;
+    const filename = `screen_${formattedDate}.png`;
     
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase
