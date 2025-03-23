@@ -87,12 +87,13 @@ serve(async (req) => {
     
     console.log(`Successfully fetched image, content type: ${contentType}, size: ${buffer.byteLength} bytes`);
 
-    // Return the image with proper headers
+    // Return the image with proper headers - REMOVED Content-Disposition to ensure GPT can process it
     return new Response(buffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=60", // Cache for 60 seconds
+        // DO NOT include "Content-Disposition": "attachment" here as it prevents GPT from viewing the image
         ...corsHeaders
       }
     });
