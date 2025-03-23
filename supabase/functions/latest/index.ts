@@ -36,8 +36,8 @@ serve(async (req) => {
     // Fetch the latest screenshot metadata with proper authentication
     const response = await fetch(API_ENDPOINT, {
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY || "",
+        Authorization: `Bearer ${SUPABASE_ANON_KEY || ""}`,
         "Content-Type": "application/json"
       }
     });
