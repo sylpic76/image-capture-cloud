@@ -38,18 +38,34 @@ serve(async (req: Request) => {
     }
 
     if (!data || data.length === 0 || !data[0].image_url) {
-      return new Response(JSON.stringify({ error: "No screenshot found" }), { 
+      return new Response("No screenshot found", { 
         status: 404,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "text/plain" }
       });
     }
 
-    // Redirect to the image URL
-    return new Response(null, {
-      status: 302,
+    // Récupérer l'image depuis l'URL stockée
+    const imageUrl = data[0].image_url;
+    const imageResponse = await fetch(imageUrl);
+    
+    if (!imageResponse.ok) {
+      return new Response(`Failed to fetch image: ${imageResponse.statusText}`, {
+        status: imageResponse.status,
+        headers: { "Content-Type": "text/plain" }
+      });
+    }
+
+    // Récupérer les données de l'image
+    const imageData = await imageResponse.arrayBuffer();
+    const contentType = imageResponse.headers.get("Content-Type") || "image/png";
+
+    // Retourner l'image directement
+    return new Response(imageData, {
+      status: 200,
       headers: {
-        "Location": data[0].image_url,
-        "Access-Control-Allow-Origin": "*"
+        "Content-Type": contentType,
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=60" // Cache for 60 seconds
       }
     });
   } catch (err) {
