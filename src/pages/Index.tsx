@@ -19,7 +19,7 @@ const Index = () => {
   // Supabase REST API link
   const supabaseLink = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
   
-  // Direct latest screenshot link
+  // Direct latest screenshot link - Updated to the modern URL format
   const latestImageLink = "https://mvuccsplodgeomzqnwjs.functions.supabase.co/latest";
 
   // Fetch screenshots from Supabase
