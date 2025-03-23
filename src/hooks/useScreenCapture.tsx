@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -15,10 +14,10 @@ export const useScreenCapture = (intervalSeconds = 30) => {
     try {
       setStatus('requesting-permission');
       
-      // Request the user's screen
+      // Request the user's screen - fixed the MediaTrackConstraints type error
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { 
-          mediaSource: "screen",
+          // mediaSource is removed as it's not in the MediaTrackConstraints type
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         }
