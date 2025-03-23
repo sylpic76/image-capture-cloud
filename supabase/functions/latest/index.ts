@@ -10,7 +10,7 @@ const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&or
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,6 +22,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Fetching latest screenshot from database");
+    
     // Fetch the latest screenshot metadata with proper authentication
     const response = await fetch(API_ENDPOINT, {
       headers: {
@@ -46,6 +48,7 @@ serve(async (req) => {
     const imageUrl = data?.[0]?.image_url;
 
     if (!imageUrl) {
+      console.log("No screenshot found in database");
       return new Response("No screenshot found", { 
         status: 404,
         headers: {
@@ -55,10 +58,13 @@ serve(async (req) => {
       });
     }
 
+    console.log(`Found image URL: ${imageUrl}, fetching image...`);
+    
     // Fetch the actual image
     const imageRes = await fetch(imageUrl);
     
     if (!imageRes.ok) {
+      console.error(`Failed to fetch image: ${imageRes.status} ${imageRes.statusText}`);
       return new Response(`Failed to fetch image: ${imageRes.statusText}`, {
         status: imageRes.status,
         headers: {
@@ -71,6 +77,8 @@ serve(async (req) => {
     // Get image data and content type
     const buffer = await imageRes.arrayBuffer();
     const contentType = imageRes.headers.get("Content-Type") || "image/png";
+    
+    console.log(`Successfully fetched image, content type: ${contentType}, size: ${buffer.byteLength} bytes`);
 
     // Return the image with proper headers
     return new Response(buffer, {
