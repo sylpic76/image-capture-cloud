@@ -2,14 +2,9 @@
 // Import the necessary modules for Deno
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Use environment variables properly
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-
-// Check that environment variables are defined
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error("Error: Missing environment variables. SUPABASE_URL and SUPABASE_ANON_KEY are required.");
-}
+// Define constants directly instead of using Deno.env.get which is not supported in V1
+const SUPABASE_URL = "https://mvuccsplodgeomzqnwjs.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dWNjc3Bsb2RnZW9tenFud2pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3NDA0OTAsImV4cCI6MjA1ODMxNjQ5MH0.iI5zthLtXrXLbjklBCx9pkC09e2sWEjXV97cXDz7uYA";
 
 const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&order=created_at.desc&limit=1`;
 
@@ -31,14 +26,12 @@ serve(async (req) => {
   try {
     console.log("Starting latest screenshot request");
     console.log(`API Endpoint: ${API_ENDPOINT}`);
-    console.log(`SUPABASE_URL defined: ${!!SUPABASE_URL}`);
-    console.log(`SUPABASE_ANON_KEY defined: ${!!SUPABASE_ANON_KEY}`);
     
     // Fetch the latest screenshot metadata with proper authentication
     const response = await fetch(API_ENDPOINT, {
       headers: {
-        apikey: SUPABASE_ANON_KEY || "",
-        Authorization: `Bearer ${SUPABASE_ANON_KEY || ""}`,
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         "Content-Type": "application/json"
       }
     });
