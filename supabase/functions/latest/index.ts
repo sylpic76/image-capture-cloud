@@ -33,14 +33,20 @@ serve(async (req: Request) => {
       console.error("Database error:", error);
       return new Response(JSON.stringify({ error: "Database error" }), { 
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
 
     if (!data || data.length === 0 || !data[0].image_url) {
       return new Response("No screenshot found", { 
         status: 404,
-        headers: { "Content-Type": "text/plain" }
+        headers: { 
+          "Content-Type": "text/plain",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
 
@@ -51,7 +57,10 @@ serve(async (req: Request) => {
     if (!imageResponse.ok) {
       return new Response(`Failed to fetch image: ${imageResponse.statusText}`, {
         status: imageResponse.status,
-        headers: { "Content-Type": "text/plain" }
+        headers: { 
+          "Content-Type": "text/plain",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
 
@@ -72,7 +81,10 @@ serve(async (req: Request) => {
     console.error("Server error:", err);
     return new Response(JSON.stringify({ error: "Server error" }), { 
       status: 500,
-      headers: { "Content-Type": "application/json" }
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*" 
+      }
     });
   }
 });
