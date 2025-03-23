@@ -2,21 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Copy, Pause, Play, Clock, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { useScreenCapture } from "@/hooks/useScreenCapture";
 
 const Index = () => {
-  // State for tracking active status and countdown
-  const [isActive, setIsActive] = useState(true);
-  const [countdown, setCountdown] = useState(30);
+  // Use our custom screen capture hook
+  const { status, countdown, toggleCapture, lastCaptureUrl } = useScreenCapture(30);
   const [screenshots, setScreenshots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isActive = status === 'active';
   
   // Supabase REST API link
   const supabaseLink = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
@@ -69,37 +68,11 @@ const Index = () => {
     };
   }, []);
 
-  // Toggle active/paused state
-  const toggleActive = () => {
-    setIsActive(!isActive);
-    toast.success(isActive ? "Capture d'écran mise en pause" : "Capture d'écran reprise");
-  };
-
   // Copy Supabase link to clipboard
   const copyLink = () => {
     navigator.clipboard.writeText(supabaseLink);
     toast.success("Lien copié dans le presse-papiers !");
   };
-
-  // Countdown timer effect
-  useEffect(() => {
-    let interval;
-    
-    if (isActive) {
-      interval = setInterval(() => {
-        setCountdown((prevCount) => {
-          if (prevCount <= 1) {
-            // In real implementation, this would trigger a screenshot
-            // For now we'll just reset the timer
-            return 30;
-          }
-          return prevCount - 1;
-        });
-      }, 1000);
-    }
-    
-    return () => clearInterval(interval);
-  }, [isActive]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -111,7 +84,7 @@ const Index = () => {
               <span>LiveScreenUploader</span>
               <Button 
                 variant={isActive ? "destructive" : "default"}
-                onClick={toggleActive}
+                onClick={toggleCapture}
                 className="flex items-center gap-2"
               >
                 {isActive ? <Pause size={18} /> : <Play size={18} />}
@@ -128,12 +101,32 @@ const Index = () => {
                     Prochain screenshot dans: <span className="font-bold">{countdown}s</span>
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {isActive ? "Capture active" : "Capture en pause"}
+                    {status === 'active' 
+                      ? "Capture active" 
+                      : status === 'paused' 
+                        ? "Capture en pause" 
+                        : status === 'requesting-permission'
+                          ? "Demande de permission..." 
+                          : status === 'error'
+                            ? "Erreur de permission" 
+                            : "Inactif"}
                   </span>
                 </div>
                 <Progress value={(countdown / 30) * 100} />
               </div>
             </div>
+            {status === 'error' && (
+              <div className="mt-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                <p className="font-medium">Erreur de permission</p>
+                <p>Veuillez autoriser la capture d'écran pour utiliser cette fonctionnalité. Cliquez sur "Reprendre la capture" pour réessayer.</p>
+              </div>
+            )}
+            {status === 'idle' && (
+              <div className="mt-4 p-3 bg-primary/10 text-primary rounded-md text-sm">
+                <p className="font-medium">Capture d'écran inactive</p>
+                <p>Cliquez sur "Reprendre la capture" pour commencer à capturer votre écran. Cela nécessite votre permission.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
