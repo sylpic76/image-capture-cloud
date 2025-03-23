@@ -2,8 +2,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Use environment variables properly
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+// Check that environment variables are defined
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error("Error: Missing environment variables. SUPABASE_URL and SUPABASE_ANON_KEY are required.");
+}
+
 const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&order=created_at.desc&limit=1`;
 
 // CORS headers - allowing access from any origin
@@ -22,7 +28,10 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Fetching latest screenshot from database");
+    console.log("Starting latest screenshot request");
+    console.log(`API Endpoint: ${API_ENDPOINT}`);
+    console.log(`SUPABASE_URL defined: ${!!SUPABASE_URL}`);
+    console.log(`SUPABASE_ANON_KEY defined: ${!!SUPABASE_ANON_KEY}`);
     
     // Fetch the latest screenshot metadata with proper authentication
     const response = await fetch(API_ENDPOINT, {
@@ -32,6 +41,8 @@ serve(async (req) => {
         "Content-Type": "application/json"
       }
     });
+
+    console.log(`Database query response status: ${response.status}`);
 
     if (!response.ok) {
       console.error(`Database query failed: ${response.status} ${response.statusText}`);
@@ -45,6 +56,8 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    console.log(`Data received: ${JSON.stringify(data)}`);
+    
     const imageUrl = data?.[0]?.image_url;
 
     if (!imageUrl) {
