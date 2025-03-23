@@ -1,80 +1,83 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
 
-// Environment variables are automatically available in edge functions
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&order=created_at.desc&limit=1`;
 
-// Create Supabase client
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
 
-serve(async (req: Request) => {
-  // CORS headers for preflight requests
+serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      }
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
     });
   }
 
   try {
-    // Get the latest screenshot
-    const { data, error } = await supabase
-      .from('screenshot_log')
-      .select('image_url')
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // Fetch the latest screenshot metadata with proper authentication
+    const response = await fetch(API_ENDPOINT, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json"
+      }
+    });
 
-    if (error) {
-      console.error("Database error:", error);
-      return new Response(JSON.stringify({ error: "Database error" }), { 
-        status: 500,
+    if (!response.ok) {
+      console.error(`Database query failed: ${response.status} ${response.statusText}`);
+      return new Response(JSON.stringify({ error: "Database query failed" }), { 
+        status: response.status, 
         headers: { 
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
+          ...corsHeaders
+        } 
       });
     }
 
-    if (!data || data.length === 0 || !data[0].image_url) {
+    const data = await response.json();
+    const imageUrl = data?.[0]?.image_url;
+
+    if (!imageUrl) {
       return new Response("No screenshot found", { 
         status: 404,
-        headers: { 
+        headers: {
           "Content-Type": "text/plain",
-          "Access-Control-Allow-Origin": "*"
+          ...corsHeaders
         }
       });
     }
 
-    // Récupérer l'image depuis l'URL stockée
-    const imageUrl = data[0].image_url;
-    const imageResponse = await fetch(imageUrl);
+    // Fetch the actual image
+    const imageRes = await fetch(imageUrl);
     
-    if (!imageResponse.ok) {
-      return new Response(`Failed to fetch image: ${imageResponse.statusText}`, {
-        status: imageResponse.status,
-        headers: { 
+    if (!imageRes.ok) {
+      return new Response(`Failed to fetch image: ${imageRes.statusText}`, {
+        status: imageRes.status,
+        headers: {
           "Content-Type": "text/plain",
-          "Access-Control-Allow-Origin": "*"
+          ...corsHeaders
         }
       });
     }
 
-    // Récupérer les données de l'image
-    const imageData = await imageResponse.arrayBuffer();
-    const contentType = imageResponse.headers.get("Content-Type") || "image/png";
+    // Get image data and content type
+    const buffer = await imageRes.arrayBuffer();
+    const contentType = imageRes.headers.get("Content-Type") || "image/png";
 
-    // Retourner l'image directement
-    return new Response(imageData, {
+    // Return the image with proper headers
+    return new Response(buffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=60" // Cache for 60 seconds
+        "Cache-Control": "public, max-age=60", // Cache for 60 seconds
+        ...corsHeaders
       }
     });
   } catch (err) {
@@ -83,7 +86,7 @@ serve(async (req: Request) => {
       status: 500,
       headers: { 
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*" 
+        ...corsHeaders
       }
     });
   }
