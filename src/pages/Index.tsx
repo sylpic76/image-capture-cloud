@@ -20,7 +20,7 @@ const Index = () => {
   const supabaseLink = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
   
   // Direct latest screenshot link - Mise à jour du format pour V1
-  const latestImageLink = "https://mvuccsplodgeomzqnwjs.functions.supabase.co/functions/v1/latest";
+  const latestImageLink = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
 
   // Fetch screenshots from Supabase
   useEffect(() => {
