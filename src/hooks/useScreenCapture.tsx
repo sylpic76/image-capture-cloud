@@ -1,9 +1,10 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 
 export type ScreenCaptureStatus = 'idle' | 'requesting-permission' | 'active' | 'paused' | 'error';
 
-export const useScreenCapture = (intervalSeconds = 30) => {
+export const useScreenCapture = (intervalSeconds = 10) => {
   const [status, setStatus] = useState<ScreenCaptureStatus>('idle');
   const [countdown, setCountdown] = useState(intervalSeconds);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
@@ -95,6 +96,15 @@ export const useScreenCapture = (intervalSeconds = 30) => {
       const result = await response.json();
       setLastCaptureUrl(result.url);
       toast.success("Capture d'écran enregistrée avec succès");
+      
+      // Call the cleanup function after successfully uploading a new screenshot
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-screenshots`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+      
       return result.url;
     } catch (error) {
       console.error("Erreur de capture d'écran:", error);

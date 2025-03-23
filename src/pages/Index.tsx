@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Copy, ExternalLink } from "lucide-react";
 
 const Index = () => {
-  // Use our custom screen capture hook
-  const { status, countdown, toggleCapture, lastCaptureUrl } = useScreenCapture(30);
+  // Use our custom screen capture hook with 10 second interval
+  const { status, countdown, toggleCapture, lastCaptureUrl } = useScreenCapture(10);
   const [screenshots, setScreenshots] = useState([]);
   const [loading, setLoading] = useState(true);
   
