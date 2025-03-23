@@ -1,69 +1,107 @@
-# Welcome to your Lovable project
 
-## Project info
+# LiveScreenUploader
 
-**URL**: https://lovable.dev/projects/f49b9fa0-cd28-4659-b197-828f896e30f3
+A minimalist desktop application that automatically captures screenshots at regular intervals and uploads them to Supabase storage.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- 📷 Takes screenshots automatically every 30 seconds
+- 🗑️ Cleans up screenshots older than 30 minutes
+- ☁️ Uploads screenshots to a public Supabase bucket
+- 📊 Logs each upload with timestamp and URL
+- ⏯️ Simple Start/Pause interface
 
-**Use Lovable**
+## Purpose
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f49b9fa0-cd28-4659-b197-828f896e30f3) and start prompting.
+This application is designed to help AI agents (like GPT-4) analyze what's happening on a user's screen in real-time by providing access to the most recent screenshots. The AI can use these visual cues along with a GitHub repository to provide context-aware assistance.
 
-Changes made via Lovable will be committed automatically to this repo.
+## Installation
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Python 3.10 or higher
+- Supabase account with:
+  - Storage bucket created
+  - Database table `screenshot_log` with columns:
+    - `image_url` (text)
+    - `created_at` (timestamp)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Setup
 
-Follow these steps:
+1. **Clone the repository**
+   ```
+   git clone https://github.com/yourusername/LiveScreenUploader.git
+   cd LiveScreenUploader
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. **Install dependencies**
+   ```
+   pip install -r requirements.txt
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. **Configure environment variables**
+   - Create a `.env` file based on the provided `.env.example`
+   ```
+   SUPABASE_URL=https://your-project-url.supabase.co
+   SUPABASE_API_KEY=your-supabase-api-key
+   BUCKET_NAME=screenshots
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+4. **Run the application**
+   ```
+   cd src
+   python main.py
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## Supabase Setup
+
+1. Create a new Supabase project
+2. Create a new storage bucket named "screenshots" (or your preferred name)
+   - Make sure to set the bucket to public
+3. Create a new table called `screenshot_log` with the following structure:
+   ```sql
+   CREATE TABLE screenshot_log (
+     id SERIAL PRIMARY KEY,
+     image_url TEXT NOT NULL,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
+   );
+   ```
+4. Get your Supabase URL and API key from the project settings
+5. Add these values to your `.env` file
+
+## Using the Application
+
+1. Start the application
+2. Click the "Start Capturing" button to begin automatic screenshots
+3. The interface will show a countdown timer for the next screenshot
+4. Recent uploads will appear in the list below with timestamps
+5. Click "Pause Capturing" to temporarily stop the process
+6. The application will automatically delete screenshots older than 30 minutes
+
+## Packaging for Distribution
+
+You can package this application into a standalone executable using PyInstaller:
+
+```
+pip install pyinstaller
+pyinstaller --onefile --windowed --add-data ".env;." src/main.py
 ```
 
-**Edit a file directly in GitHub**
+The executable will be created in the `dist` directory.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Customization
 
-**Use GitHub Codespaces**
+You can modify the application's behavior by editing the `config.py` file:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `SCREENSHOT_INTERVAL`: Time between screenshots (in seconds)
+- `RETENTION_PERIOD`: How long to keep screenshots (in seconds)
 
-## What technologies are used for this project?
+## License
 
-This project is built with .
+MIT
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Acknowledgments
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/f49b9fa0-cd28-4659-b197-828f896e30f3) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- This project uses [PyAutoGUI](https://pyautogui.readthedocs.io) for screenshot capture
+- [Supabase](https://supabase.com) provides the backend infrastructure
+- [PyQt6](https://www.riverbankcomputing.com/software/pyqt/) powers the user interface

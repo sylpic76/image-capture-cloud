@@ -1,0 +1,7 @@
+
+pyautogui==0.9.54
+supabase==2.3.0
+python-dotenv==1.0.1
+pillow==10.2.0
+PyQt6==6.6.1
+schedule==1.2.1
