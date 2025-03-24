@@ -67,8 +67,13 @@ serve(async (req) => {
 
     console.log(`Found image URL: ${imageUrl}, fetching image...`);
     
-    // Fetch the actual image
-    const imageRes = await fetch(imageUrl);
+    // Fetch the actual image - Now using authentication headers for this request too
+    const imageRes = await fetch(imageUrl, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
     
     if (!imageRes.ok) {
       console.error(`Failed to fetch image: ${imageRes.status} ${imageRes.statusText}`);
