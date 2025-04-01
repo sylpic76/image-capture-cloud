@@ -29,13 +29,13 @@ export const saveConversation = async (messages: Message[]): Promise<void> => {
 };
 
 /**
- * Send a message to the OpenAI API
+ * Send a message to the Google Gemini API
  */
 export const sendMessageToAI = async (
   input: string,
   screenshotBase64: string | null
 ): Promise<{ response: string; image_processed?: boolean }> => {
-  console.log("Calling OpenAI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
+  console.log("Calling Gemini with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
   
   try {
     const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, {
@@ -54,13 +54,13 @@ export const sendMessageToAI = async (
       const errorData = await aiResponse.json().catch(() => null);
       console.error("AI Response error:", aiResponse.status, errorData);
       
-      throw new Error(`Erreur lors de la communication avec l'API: ${aiResponse.status}`);
+      throw new Error(`Erreur lors de la communication avec l'API Gemini: ${aiResponse.status}`);
     }
     
     const responseData = await aiResponse.json();
     return responseData;
   } catch (error) {
-    console.error("Error sending message to OpenAI:", error);
+    console.error("Error sending message to Gemini:", error);
     
     // Erreur générique
     throw error;

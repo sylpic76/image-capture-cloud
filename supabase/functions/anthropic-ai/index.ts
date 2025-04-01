@@ -4,9 +4,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_API_KEY = "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";
-const MODEL = "gpt-4o";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
+const MODEL = "gemini-pro";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -33,7 +33,7 @@ serve(async (req) => {
     const { message, screenshot } = await req.json();
     
     // System message for consistent behavior
-    const systemMessage = `Tu es un assistant expert en développement d'applications web et mobile full stack. 
+    const systemInstruction = `Tu es un assistant expert en développement d'applications web et mobile full stack. 
     Tu dois fournir des réponses techniques, précises et orientées vers la résolution de problèmes de développement.
     Tu peux suggérer des améliorations de code, des corrections de bugs, et des optimisations.
     Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`;
@@ -44,46 +44,47 @@ serve(async (req) => {
     let userMessage = message;
     
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, but will not be sent as OpenAI API doesn't currently support image processing through our implementation");
+      console.log("Screenshot detected, but will not be sent as Gemini API doesn't currently support image processing through this implementation");
       imageProcessed = true;
     }
 
-    console.log("Sending request to OpenAI API...");
+    console.log("Sending request to Gemini API...");
     
     const requestBody = {
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content: systemMessage
-        },
+      contents: [
         {
           role: "user",
-          content: userMessage
+          parts: [
+            { text: userMessage }
+          ]
         }
       ],
-      max_tokens: 2000,
-      temperature: 0.7,
+      systemInstruction: {
+        parts: [{ text: systemInstruction }]
+      },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2000,
+      }
     };
     
     console.log(`API request payload preview:`, JSON.stringify(requestBody, null, 2).substring(0, 200) + "...");
     
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI API error (${response.status}):`, errorText);
+      console.error(`Gemini API error (${response.status}):`, errorText);
       
       return new Response(
         JSON.stringify({ 
-          error: `OpenAI API responded with ${response.status}: ${errorText}`,
+          error: `Gemini API responded with ${response.status}: ${errorText}`,
           suggestion: "L'API a rencontré une erreur. Veuillez réessayer votre message."
         }),
         { 
@@ -97,15 +98,15 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log("OpenAI API response received successfully");
+    console.log("Gemini API response received successfully");
 
     // Extract and return the assistant's response
-    const assistantResponse = data.choices[0]?.message.content || "Désolé, je n'ai pas pu traiter votre demande.";
+    const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas pu traiter votre demande.";
 
     return new Response(
       JSON.stringify({ 
         response: assistantResponse,
-        model: data.model,
+        model: MODEL,
         image_processed: imageProcessed
       }),
       { 
@@ -118,7 +119,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Error in openai-ai function:", error);
+    console.error("Error in gemini-ai function:", error);
     
     return new Response(
       JSON.stringify({ 
