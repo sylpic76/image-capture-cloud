@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_API_KEY = "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";
+const ANTHROPIC_API_KEY = "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";
 const MODEL = "claude-3-haiku-20240307";
 
 // CORS headers configuration
