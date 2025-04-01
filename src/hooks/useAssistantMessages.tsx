@@ -3,11 +3,20 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Message } from '@/components/AssistantIA/ChatMessage';
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from '@/integrations/supabase/types';
 
 export const useAssistantMessages = (useScreenshots: boolean = true) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [input, setInput] = useState('');
+  
+  // Function to convert Message objects to JSON-compatible format
+  const convertMessagesToJson = (messages: Message[]): Json => {
+    return messages.map(message => ({
+      ...message,
+      timestamp: message.timestamp.toISOString() // Convert Date to ISO string
+    })) as Json;
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,10 +102,11 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
     }
     
     try {
+      // Use the conversion function to make messages JSON-compatible
       const { error } = await supabase
         .from('conversations')
         .insert({
-          messages: messages,
+          messages: convertMessagesToJson(messages),
         });
 
       if (error) throw error;
