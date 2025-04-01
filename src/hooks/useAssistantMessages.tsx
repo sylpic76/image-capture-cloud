@@ -43,7 +43,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       }
       
       try {
-        // Send message to Claude AI
+        // Send message to Gemini AI
         const responseData = await sendMessageToAI(input.trim(), screenshotBase64);
         
         // Add feedback if image was processed
@@ -64,8 +64,8 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
         console.error('Erreur:', error);
         
         // Generic error message
-        let errorMessage = "Désolé, une erreur s'est produite lors de la communication avec Claude. Veuillez réessayer votre question, si possible sans capture d'écran.";
-        toast.error("Une erreur est survenue lors de la communication avec Claude.");
+        let errorMessage = "Désolé, une erreur s'est produite lors de la communication avec Gemini. Veuillez réessayer votre question, si possible sans capture d'écran.";
+        toast.error("Une erreur est survenue lors de la communication avec Gemini.");
         
         // Add an error message to the chat
         const errorAssistantMessage: Message = {
