@@ -63,7 +63,7 @@ serve(async (req) => {
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2000,
-        responseMimeType: "text/plain"
+        // Removed responseMimeType as it's causing the error
       }
     };
     
