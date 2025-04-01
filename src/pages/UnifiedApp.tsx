@@ -25,6 +25,7 @@ const UnifiedApp = () => {
     isLoading,
     handleSubmit,
     saveConversation,
+    clearConversation, // Add the new clearConversation function
     imageProcessingStatus
   } = useAssistantMessages(useScreenshots);
   
@@ -75,6 +76,7 @@ const UnifiedApp = () => {
         isLoading={isLoading}
         handleSubmit={handleSubmit}
         saveConversation={saveConversation}
+        clearConversation={clearConversation} // Add the new clearConversation prop
         useScreenshots={useScreenshots}
         setUseScreenshots={setUseScreenshots}
         setIsOptionsOpen={setIsOptionsOpen}
@@ -112,6 +114,7 @@ const UnifiedApp = () => {
           isLoading={isLoading}
           handleSubmit={handleSubmit}
           saveConversation={saveConversation}
+          clearConversation={clearConversation} // Add the new clearConversation prop
           useScreenshots={useScreenshots}
           setUseScreenshots={setUseScreenshots}
           setIsOptionsOpen={setIsOptionsOpen}
