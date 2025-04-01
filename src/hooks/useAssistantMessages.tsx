@@ -43,7 +43,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       }
       
       try {
-        // Send message to DeepSeek AI
+        // Send message to Claude AI
         const responseData = await sendMessageToAI(input.trim(), screenshotBase64);
         
         // Add feedback if image was processed
@@ -63,20 +63,9 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       } catch (error) {
         console.error('Erreur:', error);
         
-        // Messages d'erreur spécifiques
-        let errorMessage = "Désolé, une erreur s'est produite. Veuillez réessayer votre question, si possible sans capture d'écran.";
-        
-        if (error instanceof Error) {
-          if (error.message === "INSUFFICIENT_BALANCE") {
-            errorMessage = "Désolé, le service d'IA n'est pas disponible actuellement en raison d'un problème de crédit. Veuillez contacter l'administrateur du système pour recharger le compte DeepSeek.";
-            toast.error("Service IA indisponible: crédit insuffisant");
-          } else if (error.message === "IMAGE_TOO_LARGE") {
-            errorMessage = "La capture d'écran est trop volumineuse. Veuillez réessayer sans capture d'écran ou avec une image de taille réduite.";
-            toast.error("Image trop volumineuse");
-          } else {
-            toast.error("Une erreur est survenue lors de la communication avec l'IA.");
-          }
-        }
+        // Generic error message
+        let errorMessage = "Désolé, une erreur s'est produite lors de la communication avec Claude. Veuillez réessayer votre question, si possible sans capture d'écran.";
+        toast.error("Une erreur est survenue lors de la communication avec Claude.");
         
         // Add an error message to the chat
         const errorAssistantMessage: Message = {

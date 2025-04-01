@@ -29,16 +29,16 @@ export const saveConversation = async (messages: Message[]): Promise<void> => {
 };
 
 /**
- * Send a message to the DeepSeek AI API
+ * Send a message to the Anthropic Claude AI API
  */
 export const sendMessageToAI = async (
   input: string,
   screenshotBase64: string | null
 ): Promise<{ response: string; image_processed?: boolean }> => {
-  console.log("Calling DeepSeek AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
+  console.log("Calling Claude AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
   
   try {
-    const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deepseek-ai`, {
+    const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -54,31 +54,13 @@ export const sendMessageToAI = async (
       const errorData = await aiResponse.json().catch(() => null);
       console.error("AI Response error:", aiResponse.status, errorData);
       
-      // Traitement des erreurs spécifiques
-      if (aiResponse.status === 402) {
-        // Erreur de crédit insuffisant
-        throw new Error("INSUFFICIENT_BALANCE");
-      } else if (aiResponse.status === 413 || aiResponse.status === 422) {
-        // Specific handling for payload too large or validation errors
-        throw new Error("IMAGE_TOO_LARGE");
-      } else {
-        throw new Error(`Erreur lors de la communication avec l'IA: ${aiResponse.status}`);
-      }
+      throw new Error(`Erreur lors de la communication avec Claude: ${aiResponse.status}`);
     }
     
     const responseData = await aiResponse.json();
     return responseData;
   } catch (error) {
-    console.error("Error sending message to AI:", error);
-    
-    // Format d'erreur personnalisé pour mieux gérer les cas spécifiques
-    if (error instanceof Error) {
-      if (error.message === "INSUFFICIENT_BALANCE") {
-        throw new Error("INSUFFICIENT_BALANCE");
-      } else if (error.message === "IMAGE_TOO_LARGE") {
-        throw new Error("IMAGE_TOO_LARGE");
-      }
-    }
+    console.error("Error sending message to Claude AI:", error);
     
     // Erreur générique
     throw error;
