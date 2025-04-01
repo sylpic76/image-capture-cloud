@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import ChatContainer from "@/components/AssistantIA/ChatContainer";
 import ChatForm from "@/components/AssistantIA/ChatForm";
 import ChatHeader from "@/components/AssistantIA/ChatHeader";
 import ChatOptions from "@/components/AssistantIA/ChatOptions";
+import EndpointLink from "@/components/EndpointLink";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -38,11 +40,15 @@ const UnifiedApp = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [isImageLoading, setIsImageLoading] = useState(false);
   
+  // API Endpoint URLs
+  const latestImageEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
+  const screenshotsApiEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
+  
   // Fetch latest screenshot
   const fetchLatestScreenshot = async () => {
     try {
       setIsImageLoading(true);
-      const response = await fetch('https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest', {
+      const response = await fetch(latestImageEndpoint, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
@@ -93,6 +99,11 @@ const UnifiedApp = () => {
               toggleCapture={toggleCapture}
             />
             
+            <EndpointLink 
+              link={latestImageEndpoint}
+              title="Lien direct vers la dernière image"
+            />
+            
             <Card>
               <CardContent className="pt-4">
                 <div className="flex justify-between items-center mb-2">
@@ -124,6 +135,11 @@ const UnifiedApp = () => {
                 )}
               </CardContent>
             </Card>
+            
+            <EndpointLink 
+              link={screenshotsApiEndpoint}
+              title="API REST Supabase (JSON)"
+            />
           </TabsContent>
           
           <TabsContent value="assistant" className="mt-4">
@@ -178,6 +194,11 @@ const UnifiedApp = () => {
             toggleCapture={toggleCapture}
           />
           
+          <EndpointLink 
+            link={latestImageEndpoint}
+            title="Lien direct vers la dernière image"
+          />
+          
           <Card>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
@@ -215,6 +236,11 @@ const UnifiedApp = () => {
               )}
             </CardContent>
           </Card>
+          
+          <EndpointLink 
+            link={screenshotsApiEndpoint}
+            title="API REST Supabase (JSON)"
+          />
         </div>
         
         {/* Right column - Assistant IA */}
