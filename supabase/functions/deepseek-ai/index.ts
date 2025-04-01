@@ -58,58 +58,19 @@ serve(async (req) => {
       Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`
     });
     
-    // If screenshot is available, process and add it
+    // Simple text message without screenshot
+    messages.push({
+      role: "user",
+      content: message
+    });
+    console.log("Text-only message being sent (no screenshot)");
+    
+    // If screenshot was provided, include a notification but don't send the actual image
+    // Since we know DeepSeek API is having issues with credit limits
+    let imageProcessed = false;
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, processing image data");
-      
-      // Validate the base64 format
-      const isValidBase64 = validateBase64Image(screenshot);
-      console.log(`Base64 validation result: ${isValidBase64}`);
-      
-      if (isValidBase64) {
-        // Log the first 50 characters for verification
-        const previewBase64 = screenshot.substring(0, 50) + "...";
-        console.log(`Base64 preview: ${previewBase64}`);
-        
-        // Check the size of the base64 data
-        const screenshotSizeBytes = getBase64Size(screenshot);
-        const screenshotSizeMB = screenshotSizeBytes / (1024 * 1024);
-        console.log(`Screenshot size: ${screenshotSizeMB.toFixed(2)} MB`);
-        
-        // Size limit check (7MB is a common API limit for DeepSeek)
-        const MAX_SIZE_BYTES = 7 * 1024 * 1024; // 7MB limit
-        
-        if (screenshotSizeBytes <= MAX_SIZE_BYTES) {
-          // Add user message with text only - no image formatting for DeepSeek
-          // For DeepSeek, we must send only text message, not multimedia content
-          messages.push({
-            role: "user",
-            content: `${message}\n\n[Note: Une capture d'écran a été fournie mais n'est pas incluse dans cette requête car l'API DeepSeek ne supporte pas les images dans ce format]`
-          });
-          console.log("Message sent with text only (image reference included)");
-        } else {
-          console.log(`Screenshot too large (${screenshotSizeMB.toFixed(2)} MB), not sending image`);
-          // Fallback to text-only with explanation
-          messages.push({
-            role: "user",
-            content: `${message}\n\n[Note: Une capture d'écran était disponible mais n'a pas pu être envoyée car sa taille (${screenshotSizeMB.toFixed(2)} MB) dépasse la limite.]`
-          });
-        }
-      } else {
-        console.log("Invalid base64 format, falling back to text-only message");
-        // Fallback to text-only
-        messages.push({
-          role: "user",
-          content: message
-        });
-      }
-    } else {
-      // Simple text message without screenshot
-      messages.push({
-        role: "user",
-        content: message
-      });
-      console.log("Text-only message being sent (no screenshot)");
+      console.log("Screenshot detected, but will not be sent due to API limitations");
+      imageProcessed = true;
     }
 
     // Fetch from DeepSeek API
@@ -137,7 +98,21 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`DeepSeek API error (${response.status}):`, errorText);
-      throw new Error(`DeepSeek API responded with ${response.status}: ${errorText}`);
+      
+      // Passthrough the exact error for proper handling on client
+      return new Response(
+        JSON.stringify({ 
+          error: `DeepSeek API responded with ${response.status}: ${errorText}`,
+          suggestion: "L'API a rencontré une erreur. Essayez de désactiver les captures d'écran ou de réduire la taille de votre message."
+        }),
+        { 
+          status: response.status, 
+          headers: { 
+            ...corsHeaders,
+            "Content-Type": "application/json" 
+          } 
+        }
+      );
     }
 
     const data = await response.json();
@@ -151,7 +126,7 @@ serve(async (req) => {
         response: assistantResponse,
         model: data.model,
         usage: data.usage,
-        image_processed: screenshot ? true : false
+        image_processed: imageProcessed
       }),
       { 
         status: 200, 

@@ -37,30 +37,50 @@ export const sendMessageToAI = async (
 ): Promise<{ response: string; image_processed?: boolean }> => {
   console.log("Calling DeepSeek AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
   
-  const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deepseek-ai`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: input.trim(),
-      screenshot: screenshotBase64,
-    }),
-  });
-  
-  if (!aiResponse.ok) {
-    const errorData = await aiResponse.json().catch(() => null);
-    console.error("AI Response error:", aiResponse.status, errorData);
+  try {
+    const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deepseek-ai`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: input.trim(),
+        screenshot: screenshotBase64,
+      }),
+    });
     
-    if (aiResponse.status === 413 || aiResponse.status === 422) {
-      // Specific handling for payload too large or validation errors
-      toast.error("L'image est trop volumineuse. Réessayez sans capture d'écran.");
+    if (!aiResponse.ok) {
+      const errorData = await aiResponse.json().catch(() => null);
+      console.error("AI Response error:", aiResponse.status, errorData);
+      
+      // Traitement des erreurs spécifiques
+      if (aiResponse.status === 402) {
+        // Erreur de crédit insuffisant
+        throw new Error("INSUFFICIENT_BALANCE");
+      } else if (aiResponse.status === 413 || aiResponse.status === 422) {
+        // Specific handling for payload too large or validation errors
+        throw new Error("IMAGE_TOO_LARGE");
+      } else {
+        throw new Error(`Erreur lors de la communication avec l'IA: ${aiResponse.status}`);
+      }
     }
     
-    throw new Error(`Erreur lors de la communication avec l'IA: ${aiResponse.status}`);
+    const responseData = await aiResponse.json();
+    return responseData;
+  } catch (error) {
+    console.error("Error sending message to AI:", error);
+    
+    // Format d'erreur personnalisé pour mieux gérer les cas spécifiques
+    if (error instanceof Error) {
+      if (error.message === "INSUFFICIENT_BALANCE") {
+        throw new Error("INSUFFICIENT_BALANCE");
+      } else if (error.message === "IMAGE_TOO_LARGE") {
+        throw new Error("IMAGE_TOO_LARGE");
+      }
+    }
+    
+    // Erreur générique
+    throw error;
   }
-  
-  const responseData = await aiResponse.json();
-  return responseData;
 };
