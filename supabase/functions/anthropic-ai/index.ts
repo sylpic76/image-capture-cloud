@@ -5,8 +5,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
 const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
-// API URLs for Gemini AI - updated URL format and model name to v1 instead of v1beta
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent";
+// API URLs for Gemini AI - using the correct model name format
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -50,7 +50,7 @@ serve(async (req) => {
 
     console.log("Sending request to Gemini API...");
     
-    // Updated request format for Gemini API
+    // Updated request format for Gemini API - v1beta with gemini-pro model
     const requestBody = {
       contents: [
         {
@@ -106,13 +106,13 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Gemini API response received successfully");
 
-    // Extract and return the assistant's response
+    // Extract and return the assistant's response - updated path based on v1beta response format
     const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas pu traiter votre demande.";
 
     return new Response(
       JSON.stringify({ 
         response: assistantResponse,
-        model: "gemini-1.0-pro",
+        model: "gemini-pro",
         image_processed: imageProcessed
       }),
       { 
