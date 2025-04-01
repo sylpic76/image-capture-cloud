@@ -4,9 +4,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
-const MODEL = "gemini-pro";
+// API URLs for Gemini AI - updated URL format and model name to v1 instead of v1beta
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -50,6 +50,7 @@ serve(async (req) => {
 
     console.log("Sending request to Gemini API...");
     
+    // Updated request format for Gemini API
     const requestBody = {
       contents: [
         {
@@ -59,14 +60,19 @@ serve(async (req) => {
           ]
         }
       ],
-      systemInstruction: {
-        parts: [{ text: systemInstruction }]
-      },
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2000,
       }
     };
+    
+    // Include system instruction if supported by the model
+    if (systemInstruction) {
+      requestBody.contents.unshift({
+        role: "system",
+        parts: [{ text: systemInstruction }]
+      });
+    }
     
     console.log(`API request payload preview:`, JSON.stringify(requestBody, null, 2).substring(0, 200) + "...");
     
@@ -106,7 +112,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         response: assistantResponse,
-        model: MODEL,
+        model: "gemini-1.0-pro",
         image_processed: imageProcessed
       }),
       { 
