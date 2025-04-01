@@ -5,8 +5,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
 const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
-// API URLs for Gemini AI - updated to use the gemini-pro model
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+// API URLs for Gemini AI - updated to use the experimental gemini-2.5-pro model
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro-exp-03-25:generateContent";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -50,10 +50,11 @@ serve(async (req) => {
 
     console.log("Sending request to Gemini API...");
     
-    // Updated request format for Gemini API v1beta with gemini-pro model
+    // Updated request format for Gemini API v1 with experimental gemini-2.5-pro model
     const requestBody = {
       contents: [
         {
+          role: "user",
           parts: [
             { text: userMessage }
           ]
@@ -65,9 +66,10 @@ serve(async (req) => {
       }
     };
     
-    // Include system instruction if supported by the model - this is different for v1beta
+    // Include system instruction as a system role message
     if (systemInstruction) {
       requestBody.contents.unshift({
+        role: "system",
         parts: [{ text: systemInstruction }]
       });
     }
@@ -104,13 +106,13 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Gemini API response received successfully");
 
-    // Extract and return the assistant's response - updated path for v1beta format
+    // Extract and return the assistant's response
     const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas pu traiter votre demande.";
 
     return new Response(
       JSON.stringify({ 
         response: assistantResponse,
-        model: "gemini-pro",
+        model: "gemini-2.5-pro-exp-03-25",
         image_processed: imageProcessed
       }),
       { 
