@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import ScreenCaptureControls from "@/components/ScreenCaptureControls";
 import ChatContainer from "@/components/AssistantIA/ChatContainer";
 import ChatForm from "@/components/AssistantIA/ChatForm";
@@ -16,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw } from "lucide-react";
 
 const UnifiedApp = () => {
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   
   // Screen capture functionality
   const { status, countdown, toggleCapture } = useScreenCapture(10);
