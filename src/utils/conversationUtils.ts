@@ -29,13 +29,13 @@ export const saveConversation = async (messages: Message[]): Promise<void> => {
 };
 
 /**
- * Send a message to the Anthropic Claude AI API
+ * Send a message to the OpenAI API
  */
 export const sendMessageToAI = async (
   input: string,
   screenshotBase64: string | null
 ): Promise<{ response: string; image_processed?: boolean }> => {
-  console.log("Calling Claude AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
+  console.log("Calling OpenAI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
   
   try {
     const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, {
@@ -54,13 +54,13 @@ export const sendMessageToAI = async (
       const errorData = await aiResponse.json().catch(() => null);
       console.error("AI Response error:", aiResponse.status, errorData);
       
-      throw new Error(`Erreur lors de la communication avec Claude: ${aiResponse.status}`);
+      throw new Error(`Erreur lors de la communication avec l'API: ${aiResponse.status}`);
     }
     
     const responseData = await aiResponse.json();
     return responseData;
   } catch (error) {
-    console.error("Error sending message to Claude AI:", error);
+    console.error("Error sending message to OpenAI:", error);
     
     // Erreur générique
     throw error;

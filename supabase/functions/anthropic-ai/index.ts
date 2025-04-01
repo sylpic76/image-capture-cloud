@@ -4,9 +4,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_API_KEY = "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";
-const MODEL = "claude-3-haiku-20240307";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_API_KEY = "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";
+const MODEL = "gpt-4o";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -44,44 +44,46 @@ serve(async (req) => {
     let userMessage = message;
     
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, but will not be sent as Claude doesn't currently support image processing through our implementation");
+      console.log("Screenshot detected, but will not be sent as OpenAI API doesn't currently support image processing through our implementation");
       imageProcessed = true;
     }
 
-    console.log("Sending request to Anthropic API...");
+    console.log("Sending request to OpenAI API...");
     
     const requestBody = {
       model: MODEL,
       messages: [
         {
+          role: "system",
+          content: systemMessage
+        },
+        {
           role: "user",
           content: userMessage
         }
       ],
-      system: systemMessage,
       max_tokens: 2000,
       temperature: 0.7,
     };
     
     console.log(`API request payload preview:`, JSON.stringify(requestBody, null, 2).substring(0, 200) + "...");
     
-    const response = await fetch(ANTHROPIC_API_URL, {
+    const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${ANTHROPIC_API_KEY}`,
-        "anthropic-version": "2023-06-01"
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Anthropic API error (${response.status}):`, errorText);
+      console.error(`OpenAI API error (${response.status}):`, errorText);
       
       return new Response(
         JSON.stringify({ 
-          error: `Anthropic API responded with ${response.status}: ${errorText}`,
+          error: `OpenAI API responded with ${response.status}: ${errorText}`,
           suggestion: "L'API a rencontré une erreur. Veuillez réessayer votre message."
         }),
         { 
@@ -95,10 +97,10 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log("Anthropic API response received successfully");
+    console.log("OpenAI API response received successfully");
 
     // Extract and return the assistant's response
-    const assistantResponse = data.content[0]?.text || "Désolé, je n'ai pas pu traiter votre demande.";
+    const assistantResponse = data.choices[0]?.message.content || "Désolé, je n'ai pas pu traiter votre demande.";
 
     return new Response(
       JSON.stringify({ 
@@ -116,7 +118,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Error in anthropic-ai function:", error);
+    console.error("Error in openai-ai function:", error);
     
     return new Response(
       JSON.stringify({ 
