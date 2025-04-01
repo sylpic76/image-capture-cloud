@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,10 +11,11 @@ import ChatForm from "@/components/AssistantIA/ChatForm";
 import ChatHeader from "@/components/AssistantIA/ChatHeader";
 import ChatOptions from "@/components/AssistantIA/ChatOptions";
 import EndpointLink from "@/components/EndpointLink";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Copy, ExternalLink, RefreshCw } from "lucide-react";
 
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
@@ -42,6 +44,17 @@ const UnifiedApp = () => {
   // API Endpoint URLs
   const latestImageEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
   const screenshotsApiEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
+  
+  // Copy endpoint to clipboard
+  const copyEndpoint = (endpoint: string) => {
+    navigator.clipboard.writeText(endpoint);
+    toast.success("URL de l'endpoint copiée !");
+  };
+
+  // Open endpoint in new tab
+  const openEndpoint = (endpoint: string) => {
+    window.open(endpoint, '_blank');
+  };
   
   // Fetch latest screenshot
   const fetchLatestScreenshot = async () => {
@@ -98,29 +111,61 @@ const UnifiedApp = () => {
               toggleCapture={toggleCapture}
             />
             
-            <EndpointLink 
-              link={latestImageEndpoint}
-              title="Lien direct vers la dernière image"
-            />
-            
-            <Card>
+            {/* Latest Image Endpoint Link Card */}
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-muted/30 pb-3">
+                <CardTitle className="text-lg">Lien direct vers la dernière image</CardTitle>
+              </CardHeader>
               <CardContent className="pt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-lg font-medium">Dernier screenshot</h2>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <span>Màj: {lastRefreshTime.toLocaleTimeString()}</span>
-                    <button 
-                      onClick={fetchLatestScreenshot}
-                      className="p-1 rounded-full hover:bg-muted"
-                      disabled={isImageLoading}
+                <div className="flex flex-col gap-2">
+                  <div className="overflow-x-auto rounded border bg-muted/20 p-2">
+                    <code className="text-xs md:text-sm whitespace-nowrap">
+                      {latestImageEndpoint}
+                    </code>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyEndpoint(latestImageEndpoint)}
+                      className="flex gap-1.5"
                     >
-                      <RefreshCw size={14} className={`${isImageLoading ? 'animate-spin' : ''}`} />
-                    </button>
+                      <Copy size={16} />
+                      <span>Copier</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => openEndpoint(latestImageEndpoint)}
+                      className="flex gap-1.5"
+                    >
+                      <ExternalLink size={16} />
+                      <span>Ouvrir</span>
+                    </Button>
                   </div>
                 </div>
-                
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="bg-muted/30 pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">Dernier screenshot</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    Màj: {lastRefreshTime.toLocaleTimeString()}
+                  </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={fetchLatestScreenshot}
+                    disabled={isImageLoading}
+                  >
+                    <RefreshCw size={16} className={`${isImageLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
                 {latestScreenshot ? (
-                  <div className="border border-border rounded-md overflow-hidden">
+                  <div className="border border-border rounded-md overflow-hidden shadow-sm">
                     <img 
                       src={latestScreenshot} 
                       alt="Dernière capture d'écran" 
@@ -135,10 +180,40 @@ const UnifiedApp = () => {
               </CardContent>
             </Card>
             
-            <EndpointLink 
-              link={screenshotsApiEndpoint}
-              title="API REST Supabase (JSON)"
-            />
+            {/* API Endpoint Link */}
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-muted/30 pb-3">
+                <CardTitle className="text-lg">API REST Supabase (JSON)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="flex flex-col gap-2">
+                  <div className="overflow-x-auto rounded border bg-muted/20 p-2">
+                    <code className="text-xs md:text-sm whitespace-nowrap">
+                      {screenshotsApiEndpoint}
+                    </code>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyEndpoint(screenshotsApiEndpoint)}
+                      className="flex gap-1.5"
+                    >
+                      <Copy size={16} />
+                      <span>Copier</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => openEndpoint(screenshotsApiEndpoint)}
+                      className="flex gap-1.5"
+                    >
+                      <ExternalLink size={16} />
+                      <span>Ouvrir</span>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="assistant" className="mt-4">
@@ -179,49 +254,78 @@ const UnifiedApp = () => {
     );
   }
   
-  // Desktop layout with 2-column grid - UPDATED with 1/3 - 2/3 distribution
+  // Desktop layout with 2-column grid - 1/3 - 2/3 distribution
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h1 className="text-3xl font-bold mb-8">Image Capture & Assistant IA</h1>
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent pb-1">
+        Image Capture & Assistant IA
+      </h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left column - Screen Capture Controls (1/3 width) */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        <div className="lg:col-span-4 flex flex-col gap-4">
           <ScreenCaptureControls 
             status={status}
             countdown={countdown}
             toggleCapture={toggleCapture}
           />
           
-          <EndpointLink 
-            link={latestImageEndpoint}
-            title="Lien direct vers la dernière image"
-          />
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Dernier screenshot</h2>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    Mise à jour: {lastRefreshTime.toLocaleTimeString()}
-                  </Badge>
-                  <button 
-                    onClick={fetchLatestScreenshot}
-                    className="p-1 rounded-full hover:bg-muted"
-                    disabled={isImageLoading}
+          {/* Latest Image Endpoint Link Card */}
+          <Card className="overflow-hidden border-muted/40 shadow-sm">
+            <CardHeader className="bg-muted/30 pb-3">
+              <CardTitle className="text-lg">Lien direct vers la dernière image</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="flex flex-col gap-2">
+                <div className="overflow-x-auto rounded border bg-muted/20 p-2">
+                  <code className="text-xs md:text-sm whitespace-nowrap">
+                    {latestImageEndpoint}
+                  </code>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => copyEndpoint(latestImageEndpoint)}
+                    className="flex gap-1.5"
                   >
-                    <RefreshCw 
-                      size={16} 
-                      className={`${isImageLoading ? 'animate-spin' : ''}`}
-                    />
-                  </button>
+                    <Copy size={16} />
+                    <span>Copier</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => openEndpoint(latestImageEndpoint)}
+                    className="flex gap-1.5"
+                  >
+                    <ExternalLink size={16} />
+                    <span>Ouvrir</span>
+                  </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-muted/40 shadow-sm">
+            <CardHeader className="bg-muted/30 pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Dernier screenshot</CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {lastRefreshTime.toLocaleTimeString()}
+                </Badge>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={fetchLatestScreenshot}
+                  disabled={isImageLoading}
+                  title="Rafraîchir"
+                >
+                  <RefreshCw size={16} className={`${isImageLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {latestScreenshot ? (
-                <div className="border border-border rounded-md overflow-hidden">
+                <div className="border border-border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                   <img 
                     src={latestScreenshot} 
                     alt="Dernière capture d'écran" 
@@ -236,15 +340,45 @@ const UnifiedApp = () => {
             </CardContent>
           </Card>
           
-          <EndpointLink 
-            link={screenshotsApiEndpoint}
-            title="API REST Supabase (JSON)"
-          />
+          {/* API Endpoint Link */}
+          <Card className="overflow-hidden border-muted/40 shadow-sm">
+            <CardHeader className="bg-muted/30 pb-3">
+              <CardTitle className="text-lg">API REST Supabase (JSON)</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="flex flex-col gap-2">
+                <div className="overflow-x-auto rounded border bg-muted/20 p-2">
+                  <code className="text-xs md:text-sm whitespace-nowrap">
+                    {screenshotsApiEndpoint}
+                  </code>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => copyEndpoint(screenshotsApiEndpoint)}
+                    className="flex gap-1.5"
+                  >
+                    <Copy size={16} />
+                    <span>Copier</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => openEndpoint(screenshotsApiEndpoint)}
+                    className="flex gap-1.5"
+                  >
+                    <ExternalLink size={16} />
+                    <span>Ouvrir</span>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
         {/* Right column - Assistant IA (2/3 width) */}
         <div className="lg:col-span-8">
-          <Card className="h-[calc(100vh-12rem)] flex flex-col">
+          <Card className="h-[calc(100vh-12rem)] flex flex-col shadow-md border-muted/40">
             <ChatHeader
               setIsOptionsOpen={setIsOptionsOpen}
               saveConversation={saveConversation}
