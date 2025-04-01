@@ -44,37 +44,17 @@ serve(async (req) => {
       Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`
     });
     
-    // Process screenshot if available
+    // If screenshot is available, add it as a simple text message for now
+    // DeepSeek might not fully support image inputs in the same way as other models
     if (screenshot && screenshot.length > 0) {
-      try {
-        console.log("Screenshot detected, processing image...");
-        
-        // Clean up the base64 string if needed - remove data URL prefix
-        let imageData = screenshot;
-        if (imageData.includes('base64,')) {
-          imageData = imageData.split('base64,')[1];
-        }
-        
-        // For screenshots, first send the image context
-        messages.push({
-          role: "user",
-          content: `Voici une capture d'écran de mon application. Aide-moi à analyser ce que tu y vois et à résoudre mes problèmes techniques. Ma question: ${message}`
-        });
-        
-        // Then add the actual user query as a separate message
-        // This avoids complex message structures that might cause serialization issues
-        messages.push({
-          role: "user",
-          content: message
-        });
-      } catch (error) {
-        console.error("Error processing screenshot:", error);
-        // Fall back to text-only if screenshot processing fails
-        messages.push({
-          role: "user",
-          content: message
-        });
-      }
+      console.log("Screenshot detected, adding as text context");
+      
+      // Add a simple text message mentioning the screenshot context
+      messages.push({
+        role: "user",
+        content: `Je te partage le contexte suivant: J'ai une capture d'écran de mon application 
+        mais je ne peux pas te l'envoyer directement. Ma question est: ${message}`
+      });
     } else {
       // Simple text message without screenshot
       messages.push({
@@ -85,7 +65,7 @@ serve(async (req) => {
 
     // Fetch from DeepSeek API
     console.log("Sending request to DeepSeek API...");
-    console.log("Messages structure:", JSON.stringify(messages));
+    console.log("Messages structure:", JSON.stringify(messages).substring(0, 100) + "...");
     
     const response = await fetch(DEEPSEEK_API_URL, {
       method: "POST",

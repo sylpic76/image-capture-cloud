@@ -37,8 +37,10 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
     try {
       // Get the latest screenshot if enabled
       let screenshotBase64 = null;
+      
       if (useScreenshots) {
         try {
+          console.log("Attempting to fetch latest screenshot...");
           const response = await fetch('https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest', {
             headers: {
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -46,6 +48,7 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
           });
 
           if (response.ok) {
+            console.log("Screenshot fetched successfully, converting to base64...");
             const blob = await response.blob();
             
             // Convert blob to base64
@@ -56,6 +59,13 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
             });
             
             console.log("Screenshot obtained and converted to base64");
+            
+            // Limit the size of the screenshot data to avoid API limits
+            if (screenshotBase64 && screenshotBase64.length > 1000000) {
+              console.log("Screenshot too large, disabling for this request");
+              screenshotBase64 = null;
+              toast.warning("Capture d'écran trop volumineuse, elle ne sera pas utilisée pour cette requête.");
+            }
           } else {
             console.error("Failed to fetch screenshot:", response.status, response.statusText);
           }
@@ -66,7 +76,7 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
       }
       
       // Send message and screenshot to DeepSeek AI
-      console.log("Calling DeepSeek AI with screenshot:", screenshotBase64 ? "Yes (base64 data)" : "None");
+      console.log("Calling DeepSeek AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
       const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deepseek-ai`, {
         method: 'POST',
         headers: {
@@ -75,7 +85,7 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
         },
         body: JSON.stringify({
           message: input.trim(),
-          screenshot: screenshotBase64,
+          screenshot: screenshotBase64, // May be null if disabled or error occurred
         }),
       });
       
