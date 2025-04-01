@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useScreenCapture } from "@/hooks/useScreenCapture";
@@ -82,6 +83,16 @@ const Index = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex flex-col gap-8">
+        {/* Navigation Bar */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Image Capture Cloud</h1>
+          <div>
+            <Button asChild variant="outline">
+              <Link to="/assistant-ia">Assistant IA</Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Header with Status and Controls */}
         <ScreenCaptureControls 
           status={status} 
