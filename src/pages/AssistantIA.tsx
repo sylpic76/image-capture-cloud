@@ -10,7 +10,7 @@ import ChatForm from '@/components/AssistantIA/ChatForm';
 
 const AssistantIA = () => {
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
-  const [useScreenshots, setUseScreenshots] = useState(true);
+  const [useScreenshots, setUseScreenshots] = useState(false);
   
   const {
     messages,

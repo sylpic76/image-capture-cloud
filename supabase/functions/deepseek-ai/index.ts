@@ -33,29 +33,6 @@ function getBase64Size(base64String: string): number {
   return Math.ceil(base64Data.length * 0.75);
 }
 
-// Helper function to correctly format message content based on screenshot presence
-function formatMessageContent(message: string, screenshot: string | null) {
-  if (!screenshot) {
-    // Text-only message
-    return message;
-  }
-  
-  // For messages with screenshots, use the correct format expected by DeepSeek API
-  // This is different from OpenAI's format and needs to be a specific structure
-  return [
-    {
-      type: "text",
-      text: message
-    },
-    {
-      type: "image",
-      image_url: {
-        url: screenshot
-      }
-    }
-  ];
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -81,7 +58,7 @@ serve(async (req) => {
       Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`
     });
     
-    // If screenshot is available, process and add it using the correct format for DeepSeek API
+    // If screenshot is available, process and add it
     if (screenshot && screenshot.length > 0) {
       console.log("Screenshot detected, processing image data");
       
@@ -103,12 +80,13 @@ serve(async (req) => {
         const MAX_SIZE_BYTES = 7 * 1024 * 1024; // 7MB limit
         
         if (screenshotSizeBytes <= MAX_SIZE_BYTES) {
-          // Add user message with the correctly formatted content for DeepSeek
+          // Add user message with text only - no image formatting for DeepSeek
+          // For DeepSeek, we must send only text message, not multimedia content
           messages.push({
             role: "user",
-            content: formatMessageContent(message, screenshot)
+            content: `${message}\n\n[Note: Une capture d'écran a été fournie mais n'est pas incluse dans cette requête car l'API DeepSeek ne supporte pas les images dans ce format]`
           });
-          console.log("Screenshot successfully added to the message");
+          console.log("Message sent with text only (image reference included)");
         } else {
           console.log(`Screenshot too large (${screenshotSizeMB.toFixed(2)} MB), not sending image`);
           // Fallback to text-only with explanation

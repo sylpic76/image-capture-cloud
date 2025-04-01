@@ -5,7 +5,7 @@ import { Message } from '@/components/AssistantIA/ChatMessage';
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from '@/integrations/supabase/types';
 
-export const useAssistantMessages = (useScreenshots: boolean = true) => {
+export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [input, setInput] = useState('');
@@ -179,7 +179,7 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
       // Add feedback if image was processed
       let responseMessage = responseData.response || "Désolé, je n'ai pas pu traiter votre demande.";
       if (screenshotBase64 && responseData.image_processed) {
-        responseMessage = `📷 _J'ai analysé votre capture d'écran._ \n\n${responseMessage}`;
+        responseMessage = `📷 _J'ai reçu votre capture d'écran, mais je ne peux pas l'analyser actuellement._ \n\n${responseMessage}`;
       }
       
       const assistantMessage: Message = {
