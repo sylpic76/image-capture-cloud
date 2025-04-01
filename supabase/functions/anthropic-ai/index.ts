@@ -32,9 +32,6 @@ serve(async (req) => {
     // Parse the request body
     const { message, screenshot } = await req.json();
     
-    // Build messages for the API
-    const messages = [];
-    
     // System message for consistent behavior
     const systemMessage = `Tu es un assistant expert en développement d'applications web et mobile full stack. 
     Tu dois fournir des réponses techniques, précises et orientées vers la résolution de problèmes de développement.
@@ -72,7 +69,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
+        "Authorization": `Bearer ${ANTHROPIC_API_KEY}`,
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify(requestBody),
