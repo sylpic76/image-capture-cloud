@@ -3,7 +3,7 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
 
-type Message = {
+export type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;

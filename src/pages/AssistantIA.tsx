@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "sonner";
 import { useQuery } from '@tanstack/react-query';
@@ -8,16 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import ChatMessage from '@/components/AssistantIA/ChatMessage';
+import ChatMessage, { Message } from '@/components/AssistantIA/ChatMessage';
 import ChatOptions from '@/components/AssistantIA/ChatOptions';
 import { supabase } from "@/integrations/supabase/client";
-
-type Message = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-};
 
 const AssistantIA = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -158,7 +150,6 @@ const AssistantIA = () => {
         .from('conversations')
         .insert({
           messages: messages,
-          created_at: new Date().toISOString(),
         });
 
       if (error) throw error;
