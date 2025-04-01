@@ -33,6 +33,29 @@ function getBase64Size(base64String: string): number {
   return Math.ceil(base64Data.length * 0.75);
 }
 
+// Helper function to correctly format message content based on screenshot presence
+function formatMessageContent(message: string, screenshot: string | null) {
+  if (!screenshot) {
+    // Text-only message
+    return message;
+  }
+  
+  // For messages with screenshots, use the correct format expected by DeepSeek API
+  // This is different from OpenAI's format and needs to be a specific structure
+  return [
+    {
+      type: "text",
+      text: message
+    },
+    {
+      type: "image",
+      image_url: {
+        url: screenshot
+      }
+    }
+  ];
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -58,7 +81,7 @@ serve(async (req) => {
       Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`
     });
     
-    // If screenshot is available, process and add it
+    // If screenshot is available, process and add it using the correct format for DeepSeek API
     if (screenshot && screenshot.length > 0) {
       console.log("Screenshot detected, processing image data");
       
@@ -76,22 +99,14 @@ serve(async (req) => {
         const screenshotSizeMB = screenshotSizeBytes / (1024 * 1024);
         console.log(`Screenshot size: ${screenshotSizeMB.toFixed(2)} MB`);
         
-        // Size limit check (10MB is a common API limit)
-        const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
+        // Size limit check (7MB is a common API limit for DeepSeek)
+        const MAX_SIZE_BYTES = 7 * 1024 * 1024; // 7MB limit
         
         if (screenshotSizeBytes <= MAX_SIZE_BYTES) {
-          // Format for DeepSeek's multimodal input
+          // Add user message with the correctly formatted content for DeepSeek
           messages.push({
             role: "user",
-            content: [
-              { type: "text", text: message },
-              { 
-                type: "image_url", 
-                image_url: {
-                  url: screenshot
-                }
-              }
-            ]
+            content: formatMessageContent(message, screenshot)
           });
           console.log("Screenshot successfully added to the message");
         } else {
@@ -121,7 +136,7 @@ serve(async (req) => {
 
     // Fetch from DeepSeek API
     console.log("Sending request to DeepSeek API...");
-    console.log(`Message structure preview:`, JSON.stringify(messages[0]).substring(0, 100) + "...");
+    console.log(`Message structure preview:`, JSON.stringify(messages, null, 2).substring(0, 200) + "...");
     
     const requestBody = {
       model: MODEL,
