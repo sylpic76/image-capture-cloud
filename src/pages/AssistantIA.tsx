@@ -18,7 +18,8 @@ const AssistantIA = () => {
     setInput,
     isLoading,
     handleSubmit,
-    saveConversation
+    saveConversation,
+    imageProcessingStatus
   } = useAssistantMessages(useScreenshots);
 
   // Fetch the latest screenshot
@@ -71,6 +72,7 @@ const AssistantIA = () => {
               setInput={setInput}
               handleSubmit={handleSubmit}
               isLoading={isLoading}
+              imageProcessingStatus={imageProcessingStatus}
             />
           </div>
         </CardContent>

@@ -23,8 +23,8 @@ const EndpointLink = ({ link, title = "API Endpoint", description }: EndpointLin
   };
 
   return (
-    <Card className="modern-card overflow-hidden">
-      <CardHeader className="bg-gradient-primary pb-3">
+    <Card className="modern-card overflow-hidden border border-primary/10">
+      <CardHeader className="bg-gradient-to-r from-primary/80 to-primary/60 pb-3">
         <CardTitle className="text-lg flex items-center gap-2 text-white">
           <div className="p-1 bg-white/20 rounded-full">
             <Link size={16} className="text-white" />
@@ -40,23 +40,23 @@ const EndpointLink = ({ link, title = "API Endpoint", description }: EndpointLin
           <Input 
             value={link}
             readOnly
-            className="font-mono text-sm border-primary/20 bg-primary/5"
+            className="font-mono text-sm border-primary/20 bg-primary/5 flex-grow"
           />
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:w-auto w-full">
             <Button 
               variant="outline" 
               onClick={copyLink}
               className="flex-1 sm:flex-none border-primary/20 hover:bg-primary/10"
             >
-              <Copy size={16} />
-              <span className="ml-2">Copier</span>
+              <Copy size={16} className="mr-2"/>
+              <span>Copier</span>
             </Button>
             <Button
               onClick={openLink}
               className="flex-1 sm:flex-none"
             >
-              <ExternalLink size={16} />
-              <span className="ml-2">Ouvrir</span>
+              <ExternalLink size={16} className="mr-2"/>
+              <span>Ouvrir</span>
             </Button>
           </div>
         </div>

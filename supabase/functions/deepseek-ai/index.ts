@@ -19,6 +19,20 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Helper function to validate base64 image format
+function validateBase64Image(base64String: string): boolean {
+  // Check if the string starts with the correct data URI format
+  return /^data:image\/(jpeg|png|gif|webp);base64,/.test(base64String);
+}
+
+// Helper function to check the size of a base64 string (in bytes)
+function getBase64Size(base64String: string): number {
+  // Remove the data URI prefix to get just the base64 data
+  const base64Data = base64String.split(',')[1] || base64String;
+  // Calculate the size: base64 encodes 3 bytes into 4 characters
+  return Math.ceil(base64Data.length * 0.75);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -33,7 +47,7 @@ serve(async (req) => {
     const { message, screenshot } = await req.json();
     
     // Build messages for the API
-    let messages = [];
+    const messages = [];
     
     // Always add system message for consistent behavior
     messages.push({
@@ -44,28 +58,79 @@ serve(async (req) => {
       Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`
     });
     
-    // If screenshot is available, add it as a simple text message for now
-    // DeepSeek might not fully support image inputs in the same way as other models
+    // If screenshot is available, process and add it
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, adding as text context");
+      console.log("Screenshot detected, processing image data");
       
-      // Add a simple text message mentioning the screenshot context
-      messages.push({
-        role: "user",
-        content: `Je te partage le contexte suivant: J'ai une capture d'écran de mon application 
-        mais je ne peux pas te l'envoyer directement. Ma question est: ${message}`
-      });
+      // Validate the base64 format
+      const isValidBase64 = validateBase64Image(screenshot);
+      console.log(`Base64 validation result: ${isValidBase64}`);
+      
+      if (isValidBase64) {
+        // Log the first 50 characters for verification
+        const previewBase64 = screenshot.substring(0, 50) + "...";
+        console.log(`Base64 preview: ${previewBase64}`);
+        
+        // Check the size of the base64 data
+        const screenshotSizeBytes = getBase64Size(screenshot);
+        const screenshotSizeMB = screenshotSizeBytes / (1024 * 1024);
+        console.log(`Screenshot size: ${screenshotSizeMB.toFixed(2)} MB`);
+        
+        // Size limit check (10MB is a common API limit)
+        const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
+        
+        if (screenshotSizeBytes <= MAX_SIZE_BYTES) {
+          // Format for DeepSeek's multimodal input
+          messages.push({
+            role: "user",
+            content: [
+              { type: "text", text: message },
+              { 
+                type: "image_url", 
+                image_url: {
+                  url: screenshot
+                }
+              }
+            ]
+          });
+          console.log("Screenshot successfully added to the message");
+        } else {
+          console.log(`Screenshot too large (${screenshotSizeMB.toFixed(2)} MB), not sending image`);
+          // Fallback to text-only with explanation
+          messages.push({
+            role: "user",
+            content: `${message}\n\n[Note: Une capture d'écran était disponible mais n'a pas pu être envoyée car sa taille (${screenshotSizeMB.toFixed(2)} MB) dépasse la limite.]`
+          });
+        }
+      } else {
+        console.log("Invalid base64 format, falling back to text-only message");
+        // Fallback to text-only
+        messages.push({
+          role: "user",
+          content: message
+        });
+      }
     } else {
       // Simple text message without screenshot
       messages.push({
         role: "user",
         content: message
       });
+      console.log("Text-only message being sent (no screenshot)");
     }
 
     // Fetch from DeepSeek API
     console.log("Sending request to DeepSeek API...");
-    console.log("Messages structure:", JSON.stringify(messages).substring(0, 100) + "...");
+    console.log(`Message structure preview:`, JSON.stringify(messages[0]).substring(0, 100) + "...");
+    
+    const requestBody = {
+      model: MODEL,
+      messages: messages,
+      max_tokens: 2000,
+      temperature: 0.7,
+    };
+    
+    console.log(`API request payload preview:`, JSON.stringify(requestBody).substring(0, 200) + "...");
     
     const response = await fetch(DEEPSEEK_API_URL, {
       method: "POST",
@@ -73,22 +138,17 @@ serve(async (req) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: messages,
-        max_tokens: 2000,
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("DeepSeek API error:", error);
-      throw new Error(`DeepSeek API responded with ${response.status}: ${error}`);
+      const errorText = await response.text();
+      console.error(`DeepSeek API error (${response.status}):`, errorText);
+      throw new Error(`DeepSeek API responded with ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
-    console.log("DeepSeek API response received");
+    console.log("DeepSeek API response received successfully");
 
     // Extract and return the assistant's response
     const assistantResponse = data.choices[0]?.message?.content || "Désolé, je n'ai pas pu traiter votre demande.";
@@ -97,7 +157,8 @@ serve(async (req) => {
       JSON.stringify({ 
         response: assistantResponse,
         model: data.model,
-        usage: data.usage
+        usage: data.usage,
+        image_processed: screenshot ? true : false
       }),
       { 
         status: 200, 
@@ -113,7 +174,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message 
+        error: error.message,
+        suggestion: "L'API a rencontré une erreur. Essayez de désactiver les captures d'écran ou de réduire la taille de votre message."
       }),
       { 
         status: 500, 
