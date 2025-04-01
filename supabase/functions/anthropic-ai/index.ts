@@ -5,8 +5,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
 const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
-// API URLs for Gemini AI - using the correct model name format
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+// API URLs for Gemini AI - updated to use the gemini-2.5-pro model
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -44,13 +44,13 @@ serve(async (req) => {
     let userMessage = message;
     
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, but will not be sent as Gemini API doesn't currently support image processing through this implementation");
+      console.log("Screenshot detected, but will not be sent as image processing isn't currently implemented");
       imageProcessed = true;
     }
 
     console.log("Sending request to Gemini API...");
     
-    // Updated request format for Gemini API - v1beta with gemini-pro model
+    // Updated request format for Gemini API v1 with gemini-2.5-pro model
     const requestBody = {
       contents: [
         {
@@ -63,6 +63,7 @@ serve(async (req) => {
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2000,
+        responseMimeType: "text/plain"
       }
     };
     
@@ -106,13 +107,13 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Gemini API response received successfully");
 
-    // Extract and return the assistant's response - updated path based on v1beta response format
+    // Extract and return the assistant's response - updated path for v1 format
     const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas pu traiter votre demande.";
 
     return new Response(
       JSON.stringify({ 
         response: assistantResponse,
-        model: "gemini-pro",
+        model: "gemini-2.5-pro",
         image_processed: imageProcessed
       }),
       { 
