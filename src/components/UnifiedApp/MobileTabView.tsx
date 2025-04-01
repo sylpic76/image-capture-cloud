@@ -18,6 +18,7 @@ interface MobileTabViewProps {
   isLoading: boolean;
   handleSubmit: (e: React.FormEvent) => void;
   saveConversation: () => void;
+  clearConversation: () => void;
   useScreenshots: boolean;
   setUseScreenshots: (use: boolean) => void;
   setIsOptionsOpen: (isOpen: boolean) => void;
@@ -40,6 +41,7 @@ const MobileTabView = ({
   isLoading,
   handleSubmit,
   saveConversation,
+  clearConversation,
   useScreenshots,
   setUseScreenshots,
   setIsOptionsOpen,
@@ -105,6 +107,7 @@ const MobileTabView = ({
             <ChatHeader
               setIsOptionsOpen={setIsOptionsOpen}
               saveConversation={saveConversation}
+              clearConversation={clearConversation}
               useScreenshots={useScreenshots}
               setUseScreenshots={setUseScreenshots}
             />

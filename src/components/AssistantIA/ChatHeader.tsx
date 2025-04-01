@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Settings, Save, Camera } from 'lucide-react';
+import { Settings, Save, Camera, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 interface ChatHeaderProps {
   setIsOptionsOpen: (open: boolean) => void;
   saveConversation: () => void;
+  clearConversation: () => void;
   useScreenshots: boolean;
   setUseScreenshots: (use: boolean) => void;
 }
@@ -15,6 +16,7 @@ interface ChatHeaderProps {
 const ChatHeader: React.FC<ChatHeaderProps> = ({
   setIsOptionsOpen,
   saveConversation,
+  clearConversation,
   useScreenshots,
   setUseScreenshots
 }) => {
@@ -28,6 +30,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           </CardDescription>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearConversation}
+            title="Effacer la conversation"
+          >
+            <Trash2 size={18} />
+          </Button>
           <Button
             variant="outline"
             size="sm"

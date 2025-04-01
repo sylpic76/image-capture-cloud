@@ -77,6 +77,17 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     await saveChatConversation(messages);
   };
 
+  // New function to clear conversation history
+  const clearConversation = () => {
+    if (messages.length === 0) {
+      toast.info("Aucune conversation à effacer.");
+      return;
+    }
+    
+    setMessages([]);
+    toast.success("Conversation effacée avec succès!");
+  };
+
   return {
     messages,
     input,
@@ -84,6 +95,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     isLoading,
     handleSubmit,
     saveConversation,
+    clearConversation,
     imageProcessingStatus
   };
 };

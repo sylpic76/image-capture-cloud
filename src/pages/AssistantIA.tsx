@@ -19,6 +19,7 @@ const AssistantIA = () => {
     isLoading,
     handleSubmit,
     saveConversation,
+    clearConversation,
     imageProcessingStatus
   } = useAssistantMessages(useScreenshots);
 
@@ -56,6 +57,7 @@ const AssistantIA = () => {
         <ChatHeader 
           setIsOptionsOpen={setIsOptionsOpen}
           saveConversation={saveConversation}
+          clearConversation={clearConversation}
           useScreenshots={useScreenshots}
           setUseScreenshots={setUseScreenshots}
         />
