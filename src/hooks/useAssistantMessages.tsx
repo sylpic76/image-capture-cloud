@@ -54,13 +54,19 @@ export const useAssistantMessages = (useScreenshots: boolean = true) => {
               reader.onloadend = () => resolve(reader.result as string);
               reader.readAsDataURL(blob);
             });
+            
+            console.log("Screenshot obtained and converted to base64");
+          } else {
+            console.error("Failed to fetch screenshot:", response.status, response.statusText);
           }
         } catch (error) {
           console.error('Erreur lors de la conversion de l\'image:', error);
+          screenshotBase64 = null;
         }
       }
       
       // Send message and screenshot to DeepSeek AI
+      console.log("Calling DeepSeek AI with screenshot:", screenshotBase64 ? "Yes (base64 data)" : "None");
       const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deepseek-ai`, {
         method: 'POST',
         headers: {
