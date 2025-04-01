@@ -32,8 +32,7 @@ serve(async (req) => {
     // Parse the request body
     const { message, screenshot } = await req.json();
     
-    // Build prompt based on whether we have a screenshot
-    let prompt = message;
+    // Build messages for the API
     let messages = [];
     
     // Always add system message for consistent behavior
@@ -45,27 +44,39 @@ serve(async (req) => {
       Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`
     });
     
-    // Add screenshot analysis if available
+    // Process screenshot if available
     if (screenshot) {
-      messages.push({
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Voici une capture d'écran de mon application. Analyse cette image et aide-moi en fonction de ce que tu y vois.",
-          },
-          {
-            type: "image_url",
-            image_url: { url: screenshot }
-          }
-        ]
-      });
-      
-      // Add user message as follow-up question
-      messages.push({
-        role: "user",
-        content: message
-      });
+      try {
+        // For screenshots, we need to use the content array format with proper structure
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Voici une capture d'écran de mon application. Analyse cette image et aide-moi en fonction de ce que tu y vois."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: screenshot
+              }
+            }
+          ]
+        });
+        
+        // Add user message as follow-up question as simple text
+        messages.push({
+          role: "user",
+          content: message
+        });
+      } catch (error) {
+        console.error("Error processing screenshot:", error);
+        // Fall back to text-only if screenshot processing fails
+        messages.push({
+          role: "user",
+          content: message
+        });
+      }
     } else {
       // Simple text message without screenshot
       messages.push({
