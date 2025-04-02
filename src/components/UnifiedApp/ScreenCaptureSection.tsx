@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ScreenCaptureControls from "@/components/ScreenCaptureControls";
 import EndpointLink from "@/components/EndpointLink";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ScreenCaptureSectionProps {
   status: string;
@@ -28,8 +29,8 @@ const ScreenCaptureSection = ({
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [isImageLoading, setIsImageLoading] = useState(false);
   
-  // Updated API Endpoint URLs with the correct endpoint
-  const latestImageEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
+  // API Endpoint URLs
+  const lastCaptureEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/last-capture`;
   const screenshotsApiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10`;
 
   // Fetch latest screenshot
@@ -37,33 +38,55 @@ const ScreenCaptureSection = ({
     try {
       setIsImageLoading(true);
       
-      // Add strong cache-busting query parameter to prevent browser caching
+      // Add cache-busting parameter
       const cacheBuster = `?t=${Date.now()}`;
       
-      const response = await fetch(`${latestImageEndpoint}${cacheBuster}`, {
+      const response = await fetch(`${lastCaptureEndpoint}${cacheBuster}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Cache-Control': 'no-cache, no-store',
           'Pragma': 'no-cache',
         },
-        // Skip the cache entirely
         cache: 'no-store',
       });
 
-      if (response.ok) {
-        // Revoke old URL to prevent memory leaks
-        if (latestScreenshot) {
-          URL.revokeObjectURL(latestScreenshot);
-        }
-        
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setLatestScreenshot(url);
-        setLastRefreshTime(new Date());
-      } else {
-        console.error('Error fetching screenshot:', response.status);
-        toast.error(`Erreur lors de la récupération de l'image: ${response.status}`);
+      if (!response.ok) {
+        console.error('Error fetching screenshot URL:', response.status);
+        toast.error(`Erreur lors de la récupération de l'URL: ${response.status}`);
+        setIsImageLoading(false);
+        return;
       }
+
+      const data = await response.json();
+      
+      if (!data.url) {
+        console.error('Invalid response from server:', data);
+        toast.error("Format de réponse invalide");
+        setIsImageLoading(false);
+        return;
+      }
+      
+      // Revoke old URL to prevent memory leaks
+      if (latestScreenshot) {
+        URL.revokeObjectURL(latestScreenshot);
+      }
+      
+      // Now fetch the actual image using the signed URL
+      const imageResponse = await fetch(data.url, {
+        cache: 'no-store'
+      });
+      
+      if (!imageResponse.ok) {
+        console.error('Error fetching image with signed URL:', imageResponse.status);
+        toast.error(`Erreur lors de la récupération de l'image: ${imageResponse.status}`);
+        setIsImageLoading(false);
+        return;
+      }
+      
+      const blob = await imageResponse.blob();
+      const url = URL.createObjectURL(blob);
+      setLatestScreenshot(url);
+      setLastRefreshTime(new Date());
     } catch (error) {
       console.error('Error:', error);
       toast.error("Impossible de récupérer la dernière capture d'écran");
@@ -95,8 +118,8 @@ const ScreenCaptureSection = ({
       
       {/* Latest Image Endpoint */}
       <EndpointLink 
-        link={latestImageEndpoint}
-        title="Lien direct vers la dernière image"
+        link={lastCaptureEndpoint}
+        title="API pour la dernière capture (URL signée)"
       />
       
       {/* Screenshot Preview Card */}

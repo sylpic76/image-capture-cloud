@@ -79,7 +79,7 @@ const MobileTabView = ({
           {/* Latest Image Endpoint */}
           <EndpointLink 
             link={latestImageEndpoint}
-            title="Lien direct vers la dernière image"
+            title="API pour la dernière capture (URL signée)"
           />
           
           {/* Screenshot Preview */}

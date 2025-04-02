@@ -35,7 +35,7 @@ const UnifiedApp = () => {
   const [isImageLoading, setIsImageLoading] = useState(false);
   
   // Updated API Endpoint URLs
-  const latestImageEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
+  const lastCaptureEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/last-capture`;
   const screenshotsApiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10`;
   
   const fetchLatestScreenshot = async () => {
@@ -45,7 +45,7 @@ const UnifiedApp = () => {
       // Add cache-busting parameter
       const cacheBuster = `?t=${Date.now()}`;
       
-      const response = await fetch(`${latestImageEndpoint}${cacheBuster}`, {
+      const response = await fetch(`${lastCaptureEndpoint}${cacheBuster}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Cache-Control': 'no-cache, no-store',
@@ -54,14 +54,41 @@ const UnifiedApp = () => {
         cache: 'no-store',
       });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setLatestScreenshot(url);
-        setLastRefreshTime(new Date());
-      } else {
-        console.error('Error fetching screenshot:', response.status);
+      if (!response.ok) {
+        console.error('Error fetching screenshot URL:', response.status);
+        setIsImageLoading(false);
+        return;
       }
+
+      const data = await response.json();
+      
+      if (!data.url) {
+        console.error('Invalid response from server:', data);
+        setIsImageLoading(false);
+        return;
+      }
+
+      // Fetch the actual image using the signed URL
+      const imageResponse = await fetch(data.url, {
+        cache: 'no-store'
+      });
+      
+      if (!imageResponse.ok) {
+        console.error('Error fetching image with signed URL:', imageResponse.status);
+        setIsImageLoading(false);
+        return;
+      }
+      
+      const blob = await imageResponse.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Revoke old URL if exists
+      if (latestScreenshot) {
+        URL.revokeObjectURL(latestScreenshot);
+      }
+      
+      setLatestScreenshot(url);
+      setLastRefreshTime(new Date());
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -88,7 +115,7 @@ const UnifiedApp = () => {
         useScreenshots={useScreenshots}
         setUseScreenshots={setUseScreenshots}
         setIsOptionsOpen={setIsOptionsOpen}
-        latestImageEndpoint={latestImageEndpoint}
+        latestImageEndpoint={lastCaptureEndpoint}
         screenshotsApiEndpoint={screenshotsApiEndpoint}
         latestScreenshot={latestScreenshot}
         lastRefreshTime={lastRefreshTime}

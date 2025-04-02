@@ -92,11 +92,13 @@ export const fetchLatestScreenshot = async (
     // Add cache buster to prevent browser caching
     const cacheBuster = Date.now();
     
-    // Use the updated URL to the latest screenshot in storage
-    const latestImageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
+    // Use the new last-capture function endpoint
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/last-capture?t=${cacheBuster}`;
     
-    // Fetch the latest screenshot with cache busting param
-    const response = await fetch(`${latestImageUrl}?t=${cacheBuster}`, {
+    console.log(`Fetching from: ${functionUrl}`);
+    
+    // Fetch the signed URL from our function
+    const response = await fetch(functionUrl, {
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store',
@@ -105,18 +107,41 @@ export const fetchLatestScreenshot = async (
       cache: 'no-store'
     });
 
-    if (response.ok) {
-      console.log("Screenshot fetched successfully");
-      const blob = await response.blob();
-      
-      // Process and optimize the screenshot
-      return await processScreenshot(blob, setImageProcessingStatus);
-    } else {
-      console.error("Failed to fetch screenshot:", response.status, response.statusText);
+    if (!response.ok) {
+      console.error("Failed to fetch signed URL:", response.status, response.statusText);
       setImageProcessingStatus('error');
-      toast.error(`Erreur lors de la récupération de la capture: ${response.status}`);
+      toast.error(`Erreur lors de la récupération de l'URL signée: ${response.status}`);
       return null;
     }
+    
+    const data = await response.json();
+    
+    if (!data.url) {
+      console.error("Invalid response from function:", data);
+      setImageProcessingStatus('error');
+      toast.error("Réponse invalide du serveur");
+      return null;
+    }
+    
+    console.log(`Got signed URL: ${data.url.substring(0, 50)}...`);
+    
+    // Now fetch the actual image using the signed URL
+    const imageResponse = await fetch(data.url, {
+      cache: 'no-store'
+    });
+    
+    if (!imageResponse.ok) {
+      console.error("Failed to fetch image with signed URL:", imageResponse.status);
+      setImageProcessingStatus('error');
+      toast.error(`Erreur lors de la récupération de l'image: ${imageResponse.status}`);
+      return null;
+    }
+    
+    const blob = await imageResponse.blob();
+    console.log(`Image blob fetched successfully: ${blob.size} bytes`);
+      
+    // Process and optimize the screenshot
+    return await processScreenshot(blob, setImageProcessingStatus);
   } catch (error) {
     console.error('Erreur lors du traitement de l\'image:', error);
     toast.error("Erreur lors de la récupération de la capture d'écran");

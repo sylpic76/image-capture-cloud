@@ -17,11 +17,12 @@ const Index = () => {
   const [screenshots, setScreenshots] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Updated Supabase REST API link
+  // Updated API endpoints
   const supabaseLink = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10`;
+  const lastCaptureEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/last-capture`;
   
-  // Updated direct latest screenshot link
-  const latestImageLink = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
+  // State to store the latest signed URL
+  const [latestSignedUrl, setLatestSignedUrl] = useState<string | null>(null);
 
   // Fetch screenshots from Supabase
   useEffect(() => {
@@ -62,6 +63,8 @@ const Index = () => {
         (payload) => {
           // When a new screenshot is added, fetch the latest screenshots
           fetchScreenshots();
+          // Also update the latest signed URL
+          fetchLatestSignedUrl();
         }
       )
       .subscribe();
@@ -71,15 +74,53 @@ const Index = () => {
     };
   }, []);
 
+  // Fetch the latest signed URL
+  const fetchLatestSignedUrl = async () => {
+    try {
+      const cacheBuster = Date.now();
+      const response = await fetch(`${lastCaptureEndpoint}?t=${cacheBuster}`, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Cache-Control': 'no-cache, no-store',
+        },
+        cache: 'no-store'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.url) {
+          setLatestSignedUrl(data.url);
+        }
+      } else {
+        console.error("Failed to fetch signed URL:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching signed URL:", error);
+    }
+  };
+
+  // Fetch signed URL on component mount
+  useEffect(() => {
+    fetchLatestSignedUrl();
+  }, []);
+
   const copyLatestLink = () => {
-    navigator.clipboard.writeText(latestImageLink);
-    toast.success("Lien direct vers la dernière image copié !");
+    if (latestSignedUrl) {
+      navigator.clipboard.writeText(latestSignedUrl);
+      toast.success("Lien vers la dernière image copié !");
+    } else {
+      toast.error("URL non disponible");
+    }
   };
 
   const openLatestImage = () => {
-    // Ajouter un cache-buster pour s'assurer d'obtenir la dernière image
-    const url = `${latestImageLink}?t=${Date.now()}`;
-    window.open(url, '_blank');
+    if (latestSignedUrl) {
+      window.open(latestSignedUrl, '_blank');
+    } else {
+      toast.error("URL non disponible");
+      // Try to refresh the URL
+      fetchLatestSignedUrl();
+    }
   };
 
   return (
@@ -105,26 +146,35 @@ const Index = () => {
         {/* Direct Latest Image Link */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Lien direct vers la dernière image</CardTitle>
+            <CardTitle className="text-xl">Lien vers la dernière image (URL signée)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Ce lien redirige toujours vers la dernière capture d'écran. Idéal pour les intégrations.
+                Ce lien signé donne accès à la dernière capture d'écran. Il expire au bout d'une heure.
               </p>
               <div className="flex gap-2">
                 <input 
-                  value={latestImageLink}
+                  value={latestSignedUrl || 'Chargement de l\'URL...'}
                   readOnly
                   className="w-full font-mono text-sm p-2 border rounded"
                 />
-                <Button variant="outline" onClick={copyLatestLink}>
+                <Button variant="outline" onClick={copyLatestLink} disabled={!latestSignedUrl}>
                   <Copy size={18} />
                   <span className="ml-2 hidden md:inline">Copier</span>
                 </Button>
-                <Button onClick={openLatestImage}>
+                <Button onClick={openLatestImage} disabled={!latestSignedUrl}>
                   <ExternalLink size={18} />
                   <span className="ml-2 hidden md:inline">Ouvrir</span>
+                </Button>
+              </div>
+              <div className="text-right">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={fetchLatestSignedUrl}
+                >
+                  Actualiser l'URL
                 </Button>
               </div>
             </div>
