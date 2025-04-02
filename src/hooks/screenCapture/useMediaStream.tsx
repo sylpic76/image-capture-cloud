@@ -1,81 +1,26 @@
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createLogger } from './logger';
-import { requestMediaPermission, stopMediaTracks } from './mediaStream';
 
 const { logDebug, logError } = createLogger();
 
 /**
- * Hook to manage media stream permissions and state
+ * Hook to manage the media stream for screen capture
  */
 export const useMediaStream = (
-  status: string,
-  configRef: React.MutableRefObject<any>,
-  permissionAttemptRef: React.MutableRefObject<boolean>,
-  permissionInProgressRef: React.MutableRefObject<boolean>,
-  setActiveStatus: () => void,
-  setErrorStatus: (error: Error) => void,
-  setRequestingStatus: () => void,
-  intervalSeconds: number,
-  setCountdown: (seconds: number) => void
+  status,
+  configRef,
+  permissionAttemptRef,
+  permissionInProgressRef,
+  setActiveStatus,
+  setErrorStatus,
+  setRequestingStatus,
+  intervalSeconds,
+  setCountdown
 ) => {
-  // Store mediaStream in a ref to avoid re-renders
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const mountedRef = useRef<boolean>(true);
-  
-  // Reset countdown and request screen capture permission
-  const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (permissionInProgressRef.current) {
-      logDebug("Permission already being requested, ignoring duplicate request");
-      return false;
-    }
-    
-    try {
-      setRequestingStatus();
-      permissionInProgressRef.current = true;
-      
-      // Set this to true - we've attempted to get permission at least once
-      permissionAttemptRef.current = true;
-      
-      const stream = await requestMediaPermission({
-        audio: false,
-        video: true,
-        preferCurrentTab: !configRef.current.disableAdvancedSDK,
-      });
-      
-      // If component unmounted during permission request, cleanup and return
-      if (!mountedRef.current) {
-        stopMediaTracks(stream);
-        return false;
-      }
-      
-      mediaStreamRef.current = stream;
-      
-      // Reset countdown when starting fresh capture
-      setCountdown(intervalSeconds);
-      setActiveStatus();
-      
-      return true;
-    } catch (error) {
-      if (mountedRef.current) {
-        logError("Failed to get screen capture permission", error);
-        setErrorStatus(error instanceof Error ? error : new Error(String(error)));
-      }
-      return false;
-    } finally {
-      if (mountedRef.current) {
-        permissionInProgressRef.current = false;
-      }
-    }
-  }, [configRef, permissionAttemptRef, permissionInProgressRef, setActiveStatus, setErrorStatus, setRequestingStatus, intervalSeconds, setCountdown]);
-  
-  // Stop media tracks and clean up resources
-  const stopCapture = useCallback(() => {
-    if (mediaStreamRef.current) {
-      stopMediaTracks(mediaStreamRef.current);
-      mediaStreamRef.current = null;
-    }
-  }, []);
+  // References to maintain stream and mount status
+  const mediaStreamRef = useRef(null);
+  const mountedRef = useRef(true);
   
   // Clean up on unmount
   useEffect(() => {
@@ -83,7 +28,100 @@ export const useMediaStream = (
       mountedRef.current = false;
       stopCapture();
     };
-  }, [stopCapture]);
+  }, []);
+  
+  // Request screen capture permission and set up stream
+  const requestPermission = useCallback(async () => {
+    if (permissionInProgressRef.current) {
+      logDebug("Permission request already in progress, skipping");
+      return false;
+    }
+    
+    permissionInProgressRef.current = true;
+    permissionAttemptRef.current = true;
+    
+    // Update UI state
+    setRequestingStatus();
+    
+    try {
+      // Set up media constraints based on config
+      const constraints = {
+        video: {
+          cursor: configRef.current.showCursor ? "always" : "never",
+          displaySurface: "monitor"
+        },
+        audio: false  // No audio capture
+      };
+      
+      // Request screen capture
+      logDebug("Requesting screen capture with constraints:", constraints);
+      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      
+      if (!mountedRef.current) {
+        logDebug("Component unmounted during permission request, cleaning up");
+        stopStreamTracks(stream);
+        permissionInProgressRef.current = false;
+        return false;
+      }
+      
+      // Success: set up stream and start capture
+      logDebug("Screen capture permission granted");
+      
+      // Set up handlers for when user stops sharing
+      stream.getVideoTracks().forEach(track => {
+        track.onended = () => {
+          logDebug("User stopped sharing screen");
+          stopCapture();
+        };
+      });
+      
+      // Store the stream reference
+      mediaStreamRef.current = stream;
+      
+      // Set active status and restart countdown
+      setActiveStatus();
+      setCountdown(intervalSeconds);
+      
+      permissionInProgressRef.current = false;
+      return true;
+    } catch (error) {
+      if (!mountedRef.current) {
+        logDebug("Component unmounted during error handling, ignoring error");
+        permissionInProgressRef.current = false;
+        return false;
+      }
+      
+      // Handle permission denied or other errors
+      logError("Screen capture permission error", error);
+      if (error.name === "NotAllowedError") {
+        setErrorStatus(new Error("Permission denied for screen capture"));
+      } else {
+        setErrorStatus(error);
+      }
+      
+      permissionInProgressRef.current = false;
+      return false;
+    }
+  }, [setActiveStatus, setErrorStatus, setRequestingStatus, configRef, permissionAttemptRef, permissionInProgressRef, intervalSeconds, setCountdown]);
+  
+  // Stop all tracks and clear stream
+  const stopStreamTracks = useCallback((stream) => {
+    if (!stream) return;
+    
+    stream.getTracks().forEach(track => {
+      track.stop();
+    });
+  }, []);
+  
+  // Stop capture and clean up
+  const stopCapture = useCallback(() => {
+    logDebug("Stopping capture");
+    
+    if (mediaStreamRef.current) {
+      stopStreamTracks(mediaStreamRef.current);
+      mediaStreamRef.current = null;
+    }
+  }, [stopStreamTracks]);
   
   return { mediaStreamRef, requestPermission, stopCapture, mountedRef };
 };
