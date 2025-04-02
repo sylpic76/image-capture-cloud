@@ -56,6 +56,9 @@ export const captureScreen = async (
       // Clean up video resources
       cleanupResources(video);
       
+      // Upload screenshot - add extra debug information
+      logDebug(`Attempting to upload screenshot #${captureId}, blob size: ${blob.size}, type: ${blob.type}`);
+      
       // Upload screenshot
       const url = await uploadScreenshot(blob, captureId);
       
