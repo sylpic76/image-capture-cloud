@@ -57,7 +57,7 @@ refresh_token_reuse_interval = 10
 enable_signup = true
 
 [functions]
-# We removed the port=54321 line here and correctly structured the function config
+# Function configuration section - no port needed here
 
 # Disable JWT verification for the last-capture function
 [functions.last-capture]
