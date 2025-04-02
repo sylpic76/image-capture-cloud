@@ -38,7 +38,12 @@ export const requestMediaPermission = async (
     // Utiliser directement getDisplayMedia sans timeout pour éviter les conflits
     // Le navigateur gère déjà son propre timeout pour la demande d'autorisation
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      // Ajout d'un mécanisme pour éviter les appels simultanés
+      const streamPromise = navigator.mediaDevices.getDisplayMedia(constraints);
+      
+      // IMPORTANT: Nous ne définissons pas de timeout ici pour éviter les conflits avec
+      // la boîte de dialogue native du navigateur, qui gère son propre timing
+      const stream = await streamPromise;
       
       if (!stream || !stream.active || stream.getTracks().length === 0) {
         throw new Error("Stream obtained but appears to be invalid");

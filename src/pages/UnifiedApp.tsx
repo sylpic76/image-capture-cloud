@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
@@ -68,19 +69,27 @@ const UnifiedApp = () => {
   };
 
   // Initialize screen capture with delayed start to avoid permission request loop
+  // Cette modification est essentielle - utilisation d'un seul useEffect sans utiliser startCapture directement
+  const [permissionRequested, setPermissionRequested] = useState(false);
+  
   useEffect(() => {
-    // Use a timeout to ensure component is fully mounted before requesting permissions
-    const timer = setTimeout(() => {
-      console.log("Initializing screen capture with delay");
-      startCapture().catch(err => {
-        console.error("Error starting capture:", err);
-      });
-    }, 1000);
+    console.log("UnifiedApp mounted - running permission logic once");
     
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [startCapture]);
+    // Utiliser un indicateur pour éviter les demandes multiples
+    if (!permissionRequested) {
+      // Augmenter le délai pour garantir que tout est prêt
+      const timer = setTimeout(() => {
+        console.log("Initializing screen capture after delay - ONE TIME ONLY");
+        // Pas d'appel à startCapture, nous utilisons toggleCapture qui gère mieux l'état
+        toggleCapture().catch(err => {
+          console.error("Error during permission request:", err);
+        });
+        setPermissionRequested(true);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [toggleCapture, permissionRequested]);
   
   if (isMobile) {
     return (

@@ -46,7 +46,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
 
   // Request permissions with improved event handling
   const requestPermission = useCallback(async () => {
-    // Prevent multiple simultaneous permission requests
+    // CORRECTION CRITIQUE: Éviter les demandes multiples simultanées
     if (permissionInProgressRef.current) {
       logDebug("Permission request already in progress, skipping");
       return false;
@@ -84,6 +84,9 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       if (mountedRef.current) {
         setStatus('active');
         logDebug("Media stream obtained successfully, status set to active");
+        
+        // Démarrer immédiatement le compte à rebours pour la première capture
+        setCountdown(intervalSeconds);
       }
       
       return true;
@@ -101,7 +104,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       
       return false;
     }
-  }, [logDebug, logError]);
+  }, [logDebug, logError, intervalSeconds]);
 
   // Properly stop the capture with cleanup
   const stopCapture = useCallback(() => {
@@ -201,42 +204,56 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     } finally {
       isCapturingRef.current = false;
     }
-  }, [status, incrementCaptureCount, incrementSuccessCount, incrementFailureCount, logDebug]);
+  }, [status, incrementCaptureCount, incrementSuccessCount, incrementFailureCount]);
 
   // Manage countdown timer with useEffect
   useEffect(() => {
     if (status === 'active') {
       logDebug(`Starting countdown timer with interval: ${intervalSeconds}s`);
       
-      timerRef.current = window.setInterval(() => {
-        if (!mountedRef.current) return;
-        
-        setCountdown(prevCount => {
-          const newCount = prevCount <= 1 ? intervalSeconds : prevCount - 1;
-          logDebug(`Countdown: ${prevCount} -> ${newCount}`);
+      // CORRECTION: Utiliser un setTimeout au lieu d'un setInterval
+      // pour éviter les problèmes de concurrence
+      const startTimer = () => {
+        timerRef.current = window.setTimeout(() => {
+          if (!mountedRef.current) return;
           
-          if (prevCount <= 1) {
-            logDebug("Countdown reached zero, capturing screen");
-            handleCaptureScreen().catch(err => {
-              if (mountedRef.current) {
-                logError("Error during capture in timer", err);
-              }
-            });
-          }
-          
-          return newCount;
-        });
-      }, 1000);
+          // Mettre à jour le compte à rebours
+          setCountdown(prevCount => {
+            const newCount = prevCount <= 1 ? intervalSeconds : prevCount - 1;
+            logDebug(`Countdown: ${prevCount} -> ${newCount}`);
+            
+            if (prevCount <= 1) {
+              logDebug("Countdown reached zero, capturing screen");
+              handleCaptureScreen().catch(err => {
+                if (mountedRef.current) {
+                  logError("Error during capture in timer", err);
+                }
+              });
+              
+              // Redémarrer le timer après la capture
+              startTimer();
+            } else {
+              // Continuer le compte à rebours
+              startTimer();
+            }
+            
+            return newCount;
+          });
+        }, 1000);
+      };
+      
+      // Démarrer le timer
+      startTimer();
     } else if (timerRef.current !== undefined) {
       logDebug("Clearing countdown timer");
-      window.clearInterval(timerRef.current);
+      window.clearTimeout(timerRef.current);
       timerRef.current = undefined;
     }
 
     return () => {
       if (timerRef.current !== undefined) {
         logDebug("Cleanup: clearing countdown timer");
-        window.clearInterval(timerRef.current);
+        window.clearTimeout(timerRef.current);
         timerRef.current = undefined;
       }
     };
@@ -261,6 +278,9 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
 
   // Critical: Component unmount cleanup
   useEffect(() => {
+    // IMPORTANT: Marquer le composant comme démonté pour éviter les updates sur un composant non monté
+    mountedRef.current = true;
+    
     return () => {
       logDebug("Component unmounting, cleaning up media stream");
       mountedRef.current = false;
@@ -280,7 +300,9 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       failed: failureCountRef.current,
       configuration: {...configRef.current},
       browserInfo: navigator.userAgent,
-      isSdkDisabled: configRef.current.disableAdvancedSDK
+      isSdkDisabled: configRef.current.disableAdvancedSDK,
+      permissionAttempted: permissionAttemptRef.current,
+      permissionInProgress: permissionInProgressRef.current
     };
   }, [status, countdown, lastError]);
 
@@ -288,7 +310,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     status,
     countdown,
     toggleCapture,
-    startCapture, // Adding this direct method
+    startCapture,
     stopCapture,
     captureScreen: handleCaptureScreen,
     lastCaptureUrl,

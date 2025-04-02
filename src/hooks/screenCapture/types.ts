@@ -2,10 +2,10 @@
 export type ScreenCaptureStatus = 'idle' | 'requesting-permission' | 'active' | 'paused' | 'error';
 
 export interface ScreenCaptureConfig {
-  disableAdvancedSDK: boolean;
-  requestFrameRate: number;
-  enforceBasicMode: boolean;
   useLowResolution: boolean;
+  requestFrameRate?: number;
+  captureWithAudio: boolean;
+  disableAdvancedSDK: boolean;
 }
 
 export interface ScreenCaptureDiagnostics {
@@ -19,4 +19,6 @@ export interface ScreenCaptureDiagnostics {
   configuration: ScreenCaptureConfig;
   browserInfo: string;
   isSdkDisabled: boolean;
+  permissionAttempted?: boolean;
+  permissionInProgress?: boolean;
 }
