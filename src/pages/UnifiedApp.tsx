@@ -12,7 +12,8 @@ const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
   // Screen capture functionality - sans configuration restrictive
-  const { status, countdown, toggleCapture, startCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5);
+  // On ne demande plus l'autorisation au chargement
+  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5);
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -68,28 +69,8 @@ const UnifiedApp = () => {
     }
   };
 
-  // Initialize screen capture with delayed start to avoid permission request loop
-  // Cette modification est essentielle - utilisation d'un seul useEffect sans utiliser startCapture directement
-  const [permissionRequested, setPermissionRequested] = useState(false);
-  
-  useEffect(() => {
-    console.log("UnifiedApp mounted - running permission logic once");
-    
-    // Utiliser un indicateur pour éviter les demandes multiples
-    if (!permissionRequested) {
-      // Augmenter le délai pour garantir que tout est prêt
-      const timer = setTimeout(() => {
-        console.log("Initializing screen capture after delay - ONE TIME ONLY");
-        // Pas d'appel à startCapture, nous utilisons toggleCapture qui gère mieux l'état
-        toggleCapture().catch(err => {
-          console.error("Error during permission request:", err);
-        });
-        setPermissionRequested(true);
-      }, 1500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [toggleCapture, permissionRequested]);
+  // Suppression de la logique de démarrage automatique de la capture d'écran
+  // Nous avons enlevé l'autostart au chargement de la page
   
   if (isMobile) {
     return (
