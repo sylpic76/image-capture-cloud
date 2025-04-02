@@ -63,6 +63,9 @@ export const captureScreen = async (
       setLastCaptureUrl(url);
       incrementSuccessCount();
       
+      // Log de la capture réussie
+      console.log("Capture envoyée à Supabase @", new Date().toISOString());
+      
       return url;
     } catch (error) {
       logError(`Screen capture failed (attempt ${retryCount + 1}/${maxRetries + 1})`, error);

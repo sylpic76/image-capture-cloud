@@ -43,6 +43,13 @@ export const prepareVideoElement = async (mediaStream: MediaStream): Promise<HTM
     throw new Error(`Failed to play video: ${playError}`);
   }
   
+  // Vérifie que la vidéo est vraiment prête à être capturée
+  if (video.videoWidth === 0 || video.videoHeight === 0) {
+    const error = new Error("Video dimensions are zero, not ready for capture");
+    logError("Video not ready for capture", error);
+    throw error;
+  }
+  
   return video;
 };
 

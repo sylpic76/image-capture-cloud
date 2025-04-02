@@ -221,53 +221,51 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     }
   }, [status, incrementCaptureCount, incrementSuccessCount, incrementFailureCount, requestPermission]);
 
-  // Manage countdown timer with useEffect - use setTimeout for better control
+  // Fonction récursive pour effectuer la capture selon un intervalle
+  const recursiveCapture = useCallback(async () => {
+    if (!mountedRef.current || status !== 'active') return;
+    
+    // Décrémenter le compteur
+    setCountdown(prevCount => {
+      const newCount = prevCount <= 1 ? intervalSeconds : prevCount - 1;
+      logDebug(`Countdown: ${prevCount} -> ${newCount}`);
+      return newCount;
+    });
+    
+    // Quand le compte à rebours atteint 1, capturer l'écran
+    if (countdown <= 1) {
+      logDebug("Countdown reached threshold, capturing screen");
+      try {
+        await handleCaptureScreen();
+      } catch (err) {
+        if (mountedRef.current) {
+          logError("Error during capture in timer", err);
+        }
+      }
+      
+      // Réinitialiser le compte à rebours après la capture
+      if (mountedRef.current) {
+        setCountdown(intervalSeconds);
+      }
+    }
+    
+    // Programmer la prochaine itération si toujours actif
+    if (mountedRef.current && status === 'active') {
+      timerRef.current = window.setTimeout(recursiveCapture, 1000);
+    }
+  }, [status, countdown, intervalSeconds, handleCaptureScreen, logDebug, logError]);
+
+  // Gérer le compte à rebours timer avec useEffect - utiliser setTimeout pour un meilleur contrôle
   useEffect(() => {
     if (status === 'active') {
       logDebug(`Starting countdown timer with interval: ${intervalSeconds}s`);
       
-      // Use a recursive setTimeout pattern for more reliable timing
-      const scheduleCapture = () => {
-        if (!mountedRef.current) return;
-        
-        timerRef.current = window.setTimeout(async () => {
-          if (!mountedRef.current || status !== 'active') return;
-          
-          // Decrement countdown
-          setCountdown(prevCount => {
-            const newCount = prevCount <= 1 ? intervalSeconds : prevCount - 1;
-            logDebug(`Countdown: ${prevCount} -> ${newCount}`);
-            return newCount;
-          });
-          
-          // When countdown reaches 1, capture screen
-          if (countdown <= 1) {
-            logDebug("Countdown reached threshold, capturing screen");
-            try {
-              await handleCaptureScreen();
-            } catch (err) {
-              if (mountedRef.current) {
-                logError("Error during capture in timer", err);
-              }
-            }
-            
-            // Reset countdown after capture
-            if (mountedRef.current) {
-              setCountdown(intervalSeconds);
-            }
-          }
-          
-          // Schedule the next iteration if still active
-          if (mountedRef.current && status === 'active') {
-            scheduleCapture();
-          }
-        }, 1000); // Update every second
-      };
+      // Démarrer la capture récursive
+      if (timerRef.current === undefined) {
+        recursiveCapture();
+      }
       
-      // Start the scheduling
-      scheduleCapture();
-      
-      // Cleanup function
+      // Fonction de nettoyage
       return () => {
         if (timerRef.current !== undefined) {
           window.clearTimeout(timerRef.current);
@@ -275,7 +273,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
         }
       };
     }
-  }, [status, countdown, intervalSeconds, handleCaptureScreen, logDebug, logError]);
+  }, [status, intervalSeconds, recursiveCapture, logDebug]);
 
   // Log capture statistics periodically
   useEffect(() => {
