@@ -54,7 +54,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.is_capturing = False
-        self.countdown = 30
+        # Changed from 30 to 5 seconds to match the app interval
+        self.countdown = 5  
         self.initUI()
         
     def initUI(self):
@@ -179,7 +180,8 @@ class MainWindow(QMainWindow):
                     background-color: #e0352b;
                 }
             """)
-            self.countdown = 30
+            # Changed from 30 to 5 to match the app interval
+            self.countdown = 5 
             self.timer.start(1000)  # 1 second intervals
             self.update_countdown()
             self.start_signal.emit()
@@ -211,7 +213,7 @@ class MainWindow(QMainWindow):
         self.countdown_label.setText(f"Next screenshot in: {self.countdown}s")
         self.countdown -= 1
         if self.countdown < 0:
-            self.countdown = 30
+            self.countdown = 5  # Changed from 30 to 5 to match the app interval
     
     def add_log_entry(self, message, timestamp):
         item = QListWidgetItem()

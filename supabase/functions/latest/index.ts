@@ -17,7 +17,7 @@ const corsHeaders = {
   "Expires": "0"
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {

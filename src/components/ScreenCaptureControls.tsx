@@ -13,6 +13,7 @@ interface ScreenCaptureControlsProps {
 
 const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptureControlsProps) => {
   const isActive = status === 'active';
+  const interval = 5; // Set this to match the 5 second interval
   
   return (
     <Card className="modern-card overflow-hidden">
@@ -46,7 +47,7 @@ const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptu
                           : "Inactif"}
                 </span>
               </div>
-              <Progress value={(countdown / 30) * 100} className="h-2" />
+              <Progress value={(countdown / interval) * 100} className="h-2" />
             </div>
           </div>
           

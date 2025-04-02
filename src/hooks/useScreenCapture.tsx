@@ -1,8 +1,10 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 
 export type ScreenCaptureStatus = 'idle' | 'requesting-permission' | 'active' | 'paused' | 'error';
 
+// Set the default interval to 5 seconds (was 10)
 export const useScreenCapture = (intervalSeconds = 5) => {
   const [status, setStatus] = useState<ScreenCaptureStatus>('idle');
   const [countdown, setCountdown] = useState(intervalSeconds);
@@ -69,6 +71,7 @@ export const useScreenCapture = (intervalSeconds = 5) => {
       const formData = new FormData();
       formData.append('screenshot', blob, 'screenshot.png');
       
+      // Add timestamp to prevent caching
       const timestamp = Date.now();
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-screenshot?t=${timestamp}`, {
@@ -83,21 +86,13 @@ export const useScreenCapture = (intervalSeconds = 5) => {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
         throw new Error(`Error uploading screenshot: ${response.statusText}`);
       }
 
       const result = await response.json();
       setLastCaptureUrl(result.url);
-      
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-screenshots?t=${timestamp}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Cache-Control': 'no-cache, no-store',
-          'Pragma': 'no-cache',
-        },
-      });
-      
       return result.url;
     } catch (error) {
       console.error("Erreur de capture d'écran:", error);
