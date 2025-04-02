@@ -1,5 +1,5 @@
 
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ScreenCaptureStatus, ScreenCaptureConfig } from './screenCapture/types';
 import { defaultConfig } from './screenCapture/config';
@@ -10,11 +10,11 @@ import { useCaptureState } from './screenCapture/useCaptureState';
 import { useMediaStream } from './screenCapture/useMediaStream';
 import { useDiagnostics } from './screenCapture/useDiagnostics';
 import { setupNetworkMonitor } from './screenCapture/networkMonitor';
-import { useEffect } from 'react';
 
 // Set the default interval to 10 seconds (10000ms)
 export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) => {
   const { logDebug } = createLogger();
+  const isMountedRef = useRef(true);
   
   // Use the new state management hook
   const { 
@@ -32,6 +32,13 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
       await handleCaptureScreen();
     }
   });
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // Set up network monitoring
   useEffect(() => {
@@ -68,6 +75,11 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
   
   // Capture screen with the extracted captureScreen function
   const handleCaptureScreen = useCallback(async () => {
+    if (!isMountedRef.current) {
+      logDebug("Component unmounted, skipping capture");
+      return null;
+    }
+    
     if (isCapturingRef.current) {
       logDebug("Skipping capture because another capture is already in progress");
       return null;
@@ -78,11 +90,11 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
       logDebug("Cannot capture: mediaStream is null or inactive");
       
       // If status is 'active' but stream is invalid, try to recover
-      if (status === 'active') {
+      if (status === 'active' && isMountedRef.current) {
         logDebug("Status is active but stream is invalid, attempting to recover");
         const permissionGranted = await requestPermission();
-        if (!permissionGranted) {
-          logDebug("Failed to recover stream");
+        if (!permissionGranted || !isMountedRef.current) {
+          logDebug("Failed to recover stream or component unmounted");
           return null;
         }
       } else {
@@ -94,6 +106,12 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
       isCapturingRef.current = true;
       logDebug("🖼️ Capture en cours...");
       
+      if (!isMountedRef.current) {
+        logDebug("Component unmounted before capture, aborting");
+        isCapturingRef.current = false;
+        return null;
+      }
+      
       // Use the extracted capture function
       const url = await captureScreen(
         mediaStreamRef.current,
@@ -102,7 +120,7 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
         incrementSuccessCount,
         incrementFailureCount,
         (url: string) => {
-          if (mountedRef.current) {
+          if (isMountedRef.current && mountedRef.current) {
             setLastCaptureUrl(url);
           }
         }
@@ -121,12 +139,17 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
   
   // Toggle capture state
   const toggleCapture = useCallback(async () => {
+    if (!isMountedRef.current) {
+      logDebug("Toggle capture called after component unmounted");
+      return;
+    }
+    
     logDebug(`Toggle capture called, current status: ${status}`);
     
     if (status === 'idle' || status === 'error') {
       logDebug("Attempting to start capture from idle/error state");
       const permissionGranted = await requestPermission();
-      if (permissionGranted && mountedRef.current) {
+      if (permissionGranted && isMountedRef.current && mountedRef.current) {
         logDebug("Permission granted, setting countdown");
         // Explicitly log the success here
         logDebug("Capture activated successfully");
@@ -136,19 +159,19 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
       } else {
         logDebug("Permission denied or component unmounted");
       }
-    } else if (status === 'active') {
+    } else if (status === 'active' && isMountedRef.current) {
       logDebug("Pausing capture");
       setPauseStatus();
       toast.success("Capture d'écran mise en pause");
-    } else if (status === 'paused') {
+    } else if (status === 'paused' && isMountedRef.current) {
       logDebug("Resuming capture");
       
       // Check if we still have an active stream, request if needed
       if (!mediaStreamRef.current || !mediaStreamRef.current.active) {
         logDebug("Stream no longer active, requesting new permission");
         const permissionGranted = await requestPermission();
-        if (!permissionGranted) {
-          logDebug("Failed to get new permission when resuming");
+        if (!permissionGranted || !isMountedRef.current) {
+          logDebug("Failed to get new permission when resuming or component unmounted");
           return;
         }
       }
