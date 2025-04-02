@@ -35,47 +35,44 @@ export const requestMediaPermission = async (
     
     logDebug(`Requesting media with constraints: ${JSON.stringify(constraints)}`);
     
-    // Tentative avec gestion d'erreur améliorée - Timeout ajouté
-    let streamPromise = navigator.mediaDevices.getDisplayMedia(constraints);
-    
-    // Ajouter un timeout pour la demande de permission
-    const timeoutPromise = new Promise<MediaStream>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error("Permission request timed out"));
-      }, 30000); // 30 secondes de timeout
-    });
-    
-    // Utiliser Promise.race pour gérer le timeout
-    let stream: MediaStream;
+    // Utiliser directement getDisplayMedia sans timeout pour éviter les conflits
+    // Le navigateur gère déjà son propre timeout pour la demande d'autorisation
     try {
-      stream = await Promise.race([streamPromise, timeoutPromise]);
+      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      
+      if (!stream || !stream.active || stream.getTracks().length === 0) {
+        throw new Error("Stream obtained but appears to be invalid");
+      }
+      
+      // Log detailed info about each track
+      stream.getTracks().forEach(track => {
+        logDebug(`Track obtained: id=${track.id}, kind=${track.kind}, label=${track.label}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+        
+        // Add track ended listener to handle when user stops sharing
+        track.addEventListener('ended', () => {
+          logDebug(`Track ${track.id} ended by user or system`);
+        });
+      });
+      
+      logDebug("Permission granted, stream obtained successfully");
+      return stream;
     } catch (e) {
       // Si l'erreur est liée aux contraintes, réessayer avec des contraintes minimales
       if (e instanceof DOMException && 
           (e.name === 'OverconstrainedError' || e.name === 'ConstraintNotSatisfiedError')) {
         logDebug("Constraints not satisfied, retrying with minimal constraints");
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const fallbackStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        
+        if (!fallbackStream || !fallbackStream.active) {
+          throw new Error("Fallback stream failed to initialize");
+        }
+        
+        logDebug("Fallback stream obtained successfully");
+        return fallbackStream;
       } else {
         throw e;
       }
     }
-    
-    if (!stream || !stream.active || stream.getTracks().length === 0) {
-      throw new Error("Stream obtained but appears to be invalid");
-    }
-    
-    // Log detailed info about each track
-    stream.getTracks().forEach(track => {
-      logDebug(`Track obtained: id=${track.id}, kind=${track.kind}, label=${track.label}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
-      
-      // Add track ended listener to handle when user stops sharing
-      track.addEventListener('ended', () => {
-        logDebug(`Track ${track.id} ended by user or system`);
-      });
-    });
-    
-    logDebug("Permission granted, stream obtained successfully");
-    return stream;
   } catch (error) {
     if (error instanceof DOMException) {
       switch (error.name) {

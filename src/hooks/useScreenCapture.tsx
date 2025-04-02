@@ -26,6 +26,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
   const isCapturingRef = useRef(false);
   const mountedRef = useRef(true); // Track component mounted state
   const permissionAttemptRef = useRef(false); // Track if we've attempted to request permission
+  const permissionInProgressRef = useRef(false); // Track if permission request is in progress
 
   const { logDebug, logError } = createLogger();
 
@@ -45,13 +46,23 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
 
   // Request permissions with improved event handling
   const requestPermission = useCallback(async () => {
+    // Prevent multiple simultaneous permission requests
+    if (permissionInProgressRef.current) {
+      logDebug("Permission request already in progress, skipping");
+      return false;
+    }
+
     try {
       logDebug("Requesting screen capture permission...");
       setStatus('requesting-permission');
       permissionAttemptRef.current = true;
+      permissionInProgressRef.current = true;
       
       // Use the extracted media permission function
       const stream = await requestMediaPermission(configRef);
+      
+      // Reset the in-progress flag
+      permissionInProgressRef.current = false;
       
       if (!stream) {
         throw new Error("Failed to obtain media stream");
@@ -73,11 +84,13 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       if (mountedRef.current) {
         setStatus('active');
         logDebug("Media stream obtained successfully, status set to active");
-        // Success toast is removed as requested
       }
       
       return true;
     } catch (error) {
+      // Reset the in-progress flag on error
+      permissionInProgressRef.current = false;
+      
       logError("Permission request failed", error);
       
       if (mountedRef.current) {
@@ -142,16 +155,18 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
   // Force start capture - adding this as a simpler alternative
   const startCapture = useCallback(async () => {
     logDebug("Force starting capture");
-    if (status !== 'active' && !permissionAttemptRef.current) {
-      permissionAttemptRef.current = true;
+    
+    // Allow retrying if we're in error state or idle state and not already attempting
+    if ((status === 'idle' || status === 'error') && !permissionInProgressRef.current) {
+      // Reset permission attempt flag to allow retry
+      permissionAttemptRef.current = false; 
+      
       const permissionGranted = await requestPermission();
       if (permissionGranted && mountedRef.current) {
         setCountdown(intervalSeconds);
         logDebug("Force start: Capture activated successfully");
       } else {
         logDebug("Force start: Permission denied or component unmounted");
-        // Réinitialiser le flag d'autorisation pour permettre de réessayer
-        permissionAttemptRef.current = false;
       }
     } else {
       logDebug(`Capture already ${status}, ignoring start request`);

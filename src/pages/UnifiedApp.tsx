@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
@@ -68,17 +67,20 @@ const UnifiedApp = () => {
     }
   };
 
-  // Automatically start capture when component mounts
+  // Initialize screen capture with delayed start to avoid permission request loop
   useEffect(() => {
-    const initCapture = async () => {
-      console.log("Initializing screen capture automatically");
-      await startCapture();
+    // Use a timeout to ensure component is fully mounted before requesting permissions
+    const timer = setTimeout(() => {
+      console.log("Initializing screen capture with delay");
+      startCapture().catch(err => {
+        console.error("Error starting capture:", err);
+      });
+    }, 1000);
+    
+    return () => {
+      clearTimeout(timer);
     };
-    
-    initCapture();
-    
-    // Cleanup on unmount is handled within useScreenCapture
-  }, [startCapture]); 
+  }, [startCapture]);
   
   if (isMobile) {
     return (
