@@ -5,8 +5,6 @@ import { ScreenCaptureStatus, ScreenCaptureConfig, ScreenCaptureDiagnostics } fr
 import { defaultConfig, lockConfiguration } from './screenCapture/config';
 import { createLogger } from './screenCapture/logger';
 import { requestMediaPermission, stopMediaTracks } from './screenCapture/mediaStream';
-import { validateCapturePrerequisites } from './screenCapture/utils/mediaValidation';
-import { setupNetworkMonitor } from './screenCapture/networkMonitor';
 import { captureScreen } from './screenCapture/captureScreen';
 
 // Set the default interval to 5 seconds (5000ms)
@@ -200,6 +198,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
 
     try {
       isCapturingRef.current = true;
+      logDebug("🖼️ Capture en cours...");
       
       // Use the extracted capture function
       const url = await captureScreen(
@@ -285,12 +284,6 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     
     return () => clearInterval(statsInterval);
   }, [status, logDebug]);
-
-  // Monitor browser console for unhandled fetch errors
-  useEffect(() => {
-    const cleanup = setupNetworkMonitor();
-    return cleanup;
-  }, []);
 
   // Critical: Component unmount cleanup
   useEffect(() => {
