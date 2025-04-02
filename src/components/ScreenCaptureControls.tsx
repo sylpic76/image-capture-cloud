@@ -1,10 +1,17 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Pause, Play, AlertTriangle } from "lucide-react";
+import { Clock, Pause, Play, AlertTriangle, FileText } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ScreenCaptureControlsProps {
   status: string;
@@ -12,12 +19,67 @@ interface ScreenCaptureControlsProps {
   toggleCapture: () => void;
 }
 
+interface LogEntry {
+  message: string;
+  timestamp: string;
+  type: 'info' | 'error' | 'success';
+}
+
 const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptureControlsProps) => {
   const isActive = status === 'active';
   const interval = 5; // Set this to match the 5 second interval
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  
+  // Capture console logs 
+  useEffect(() => {
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    
+    const captureLog = (type: 'info' | 'error' | 'success', args: any[]) => {
+      const message = args.map(arg => {
+        if (typeof arg === 'string') return arg;
+        try {
+          return JSON.stringify(arg);
+        } catch (e) {
+          return String(arg);
+        }
+      }).join(' ');
+      
+      // Only capture screenshot and capture related logs
+      if (message.includes('[useScreenCapture]') || 
+          message.includes('[ScreenCapture]') || 
+          message.includes('capture') || 
+          message.includes('screenshot')) {
+        
+        setLogs(prev => [
+          {
+            message,
+            timestamp: new Date().toLocaleTimeString(),
+            type
+          },
+          ...prev.slice(0, 29) // Keep only last 30 logs
+        ]);
+      }
+    };
+    
+    console.log = (...args) => {
+      originalConsoleLog.apply(console, args);
+      captureLog('info', args);
+    };
+    
+    console.error = (...args) => {
+      originalConsoleError.apply(console, args);
+      captureLog('error', args);
+    };
+    
+    return () => {
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+    };
+  }, []);
   
   // Afficher des logs dans la console pour suivre l'état et le compte à rebours
-  React.useEffect(() => {
+  useEffect(() => {
     console.log(`[ScreenCapture] Status: ${status}, Countdown: ${countdown}/${interval}`);
     
     if (status === 'error') {
@@ -35,6 +97,49 @@ const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptu
             </div>
             <span>LiveScreenUploader</span>
           </span>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                <FileText size={16} />
+                <span className="ml-1">Logs</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>Logs de capture d'écran</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-y-auto max-h-[60vh] border rounded p-2 bg-black/5">
+                {logs.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    Aucun log disponible
+                  </div>
+                ) : (
+                  <div className="space-y-1 font-mono text-xs">
+                    {logs.map((log, i) => (
+                      <div 
+                        key={i} 
+                        className={`p-1 rounded ${
+                          log.type === 'error' 
+                            ? 'bg-red-50 text-red-800 border-l-2 border-red-500' 
+                            : log.type === 'success'
+                              ? 'bg-green-50 text-green-800 border-l-2 border-green-500'
+                              : 'border-l-2 border-gray-300'
+                        }`}
+                      >
+                        <span className="text-gray-500">{log.timestamp}</span>:{' '}
+                        {log.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                <p>Affichage des 30 derniers logs de capture d'écran</p>
+                <p>Pour des logs plus détaillés, ouvrez la console développeur (F12)</p>
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-5">
@@ -96,6 +201,75 @@ const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptu
               <p>Cliquez sur "Reprendre la capture" pour commencer à capturer votre écran.</p>
             </div>
           )}
+          
+          {/* Small log preview */}
+          <div className="border rounded-md mt-2 overflow-hidden">
+            <div className="bg-muted/40 px-3 py-2 text-sm font-medium border-b flex justify-between items-center">
+              <span>Derniers logs</span>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7">
+                    Voir tout
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>Logs de capture d'écran</DialogTitle>
+                  </DialogHeader>
+                  <div className="overflow-y-auto max-h-[60vh] border rounded p-2 bg-black/5">
+                    {logs.length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground">
+                        Aucun log disponible
+                      </div>
+                    ) : (
+                      <div className="space-y-1 font-mono text-xs">
+                        {logs.map((log, i) => (
+                          <div 
+                            key={i} 
+                            className={`p-1 rounded ${
+                              log.type === 'error' 
+                                ? 'bg-red-50 text-red-800 border-l-2 border-red-500' 
+                                : log.type === 'success'
+                                  ? 'bg-green-50 text-green-800 border-l-2 border-green-500'
+                                  : 'border-l-2 border-gray-300'
+                            }`}
+                          >
+                            <span className="text-gray-500">{log.timestamp}</span>:{' '}
+                            {log.message}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <div className="max-h-36 overflow-y-auto p-2 bg-black/5">
+              {logs.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  Aucun log disponible
+                </div>
+              ) : (
+                <div className="space-y-1 font-mono text-xs">
+                  {logs.slice(0, 5).map((log, i) => (
+                    <div 
+                      key={i} 
+                      className={`p-1 rounded truncate ${
+                        log.type === 'error' 
+                          ? 'bg-red-50 text-red-800 border-l-2 border-red-500' 
+                          : log.type === 'success'
+                            ? 'bg-green-50 text-green-800 border-l-2 border-green-500'
+                            : 'border-l-2 border-gray-300'
+                      }`}
+                    >
+                      <span className="text-gray-500">{log.timestamp}</span>:{' '}
+                      {log.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
