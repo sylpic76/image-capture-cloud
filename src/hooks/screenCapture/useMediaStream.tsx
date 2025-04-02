@@ -54,7 +54,8 @@ export const useMediaStream = (
       };
       
       // Request screen capture
-      logDebug("Requesting screen capture with constraints:", constraints);
+      // Fix: The logDebug function expects only one argument
+      logDebug(`Requesting screen capture with constraints: ${JSON.stringify(constraints)}`);
       const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
       
       if (!mountedRef.current) {
