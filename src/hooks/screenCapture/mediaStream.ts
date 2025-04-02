@@ -1,10 +1,13 @@
 
 import { ScreenCaptureConfig } from './types';
 import { createLogger } from './logger';
+import { useRef } from 'react';
 
 const { logDebug, logError } = createLogger();
 
-// Fonction améliorée pour demander les permissions avec meilleure gestion d'erreurs
+/**
+ * Fonction améliorée pour demander les permissions avec meilleure gestion d'erreurs
+ */
 export const requestMediaPermission = async (
   configRef: React.RefObject<ScreenCaptureConfig>
 ): Promise<MediaStream | null> => {
@@ -88,7 +91,9 @@ export const requestMediaPermission = async (
   }
 };
 
-// Fonction améliorée pour arrêter les pistes média avec plus de robustesse
+/**
+ * Fonction améliorée pour arrêter les pistes média avec plus de robustesse
+ */
 export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
   if (!mediaStream) return;
   
