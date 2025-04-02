@@ -34,7 +34,7 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
 
     if (!response.ok) {
       const errorText = await response.text();
-      logError(`HTTP Error ${response.status}: ${errorText}`);
+      logError(`HTTP Error ${response.status}: ${errorText}`, new Error(errorText));
       throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
