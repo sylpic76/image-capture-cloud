@@ -1,24 +1,20 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 
 export type ScreenCaptureStatus = 'idle' | 'requesting-permission' | 'active' | 'paused' | 'error';
 
-export const useScreenCapture = (intervalSeconds = 10) => {
+export const useScreenCapture = (intervalSeconds = 5) => {
   const [status, setStatus] = useState<ScreenCaptureStatus>('idle');
   const [countdown, setCountdown] = useState(intervalSeconds);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [lastCaptureUrl, setLastCaptureUrl] = useState<string | null>(null);
 
-  // Request screen capture permission
   const requestPermission = useCallback(async () => {
     try {
       setStatus('requesting-permission');
       
-      // Request the user's screen - fixed the MediaTrackConstraints type error
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { 
-          // mediaSource is removed as it's not in the MediaTrackConstraints type
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         }
@@ -36,19 +32,16 @@ export const useScreenCapture = (intervalSeconds = 10) => {
     }
   }, []);
 
-  // Capture the screen
   const captureScreen = useCallback(async () => {
     if (!mediaStream || status !== 'active') {
       return null;
     }
 
     try {
-      // Create a video element to capture a frame from the stream
       const video = document.createElement('video');
       video.srcObject = mediaStream;
       video.muted = true;
       
-      // Wait for video to be ready
       await new Promise(resolve => {
         video.onloadedmetadata = () => {
           video.play();
@@ -56,16 +49,13 @@ export const useScreenCapture = (intervalSeconds = 10) => {
         };
       });
 
-      // Create a canvas to draw the frame
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       
-      // Draw the current frame
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert to blob
       const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((blob) => {
           if (blob) resolve(blob);
@@ -73,19 +63,18 @@ export const useScreenCapture = (intervalSeconds = 10) => {
             toast.error("Échec de la capture d'écran. Réessayez plus tard.");
             throw new Error("Failed to create blob");
           }
-        }, 'image/png');
+        }, 'image/png', 0.95);
       });
 
-      // Create form data for the upload
       const formData = new FormData();
       formData.append('screenshot', blob, 'screenshot.png');
 
-      // Upload to Supabase via our edge function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-screenshot`, {
         method: 'POST',
         body: formData,
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'X-Priority': 'high',
         },
       });
 
@@ -95,9 +84,7 @@ export const useScreenCapture = (intervalSeconds = 10) => {
 
       const result = await response.json();
       setLastCaptureUrl(result.url);
-      toast.success("Capture d'écran enregistrée avec succès");
       
-      // Call the cleanup function after successfully uploading a new screenshot
       await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-screenshots`, {
         method: 'POST',
         headers: {
@@ -113,27 +100,22 @@ export const useScreenCapture = (intervalSeconds = 10) => {
     }
   }, [mediaStream, status]);
 
-  // Toggle capture state
   const toggleCapture = useCallback(async () => {
     if (status === 'idle' || status === 'error') {
-      // Start capturing
       const permissionGranted = await requestPermission();
       if (permissionGranted) {
         setCountdown(intervalSeconds);
       }
     } else if (status === 'active') {
-      // Pause capturing
       setStatus('paused');
       toast.success("Capture d'écran mise en pause");
     } else if (status === 'paused') {
-      // Resume capturing
       setStatus('active');
       setCountdown(intervalSeconds);
       toast.success("Capture d'écran reprise");
     }
   }, [status, requestPermission, intervalSeconds]);
 
-  // Stop and clean up
   const stopCapture = useCallback(() => {
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
@@ -142,7 +124,6 @@ export const useScreenCapture = (intervalSeconds = 10) => {
     setStatus('idle');
   }, [mediaStream]);
 
-  // Handle countdown and automatic capture
   useEffect(() => {
     let timerId: number;
 
@@ -150,7 +131,6 @@ export const useScreenCapture = (intervalSeconds = 10) => {
       timerId = window.setInterval(() => {
         setCountdown(prevCount => {
           if (prevCount <= 1) {
-            // Capture screen when countdown reaches 0
             captureScreen();
             return intervalSeconds;
           }
@@ -164,7 +144,6 @@ export const useScreenCapture = (intervalSeconds = 10) => {
     };
   }, [status, captureScreen, intervalSeconds]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (mediaStream) {

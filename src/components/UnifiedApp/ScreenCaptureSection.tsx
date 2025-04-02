@@ -32,13 +32,24 @@ const ScreenCaptureSection = ({
   const fetchLatestScreenshot = async () => {
     try {
       setIsImageLoading(true);
-      const response = await fetch(latestImageEndpoint, {
+      
+      // Add cache-busting query parameter to prevent browser caching
+      const cacheBuster = `?t=${Date.now()}`;
+      
+      const response = await fetch(`${latestImageEndpoint}${cacheBuster}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
         },
       });
 
       if (response.ok) {
+        // Revoke old URL to prevent memory leaks
+        if (latestScreenshot) {
+          URL.revokeObjectURL(latestScreenshot);
+        }
+        
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         setLatestScreenshot(url);
@@ -53,13 +64,13 @@ const ScreenCaptureSection = ({
     }
   };
 
-  // Auto-refresh screenshot every 10 seconds
+  // Auto-refresh screenshot every 5 seconds
   useEffect(() => {
     fetchLatestScreenshot();
     
     const intervalId = setInterval(() => {
       fetchLatestScreenshot();
-    }, 10000);
+    }, 5000); // Changed from 10000 to 5000
     
     return () => clearInterval(intervalId);
   }, []);
@@ -104,6 +115,7 @@ const ScreenCaptureSection = ({
                 src={latestScreenshot} 
                 alt="Dernière capture d'écran" 
                 className="w-full h-auto"
+                loading="eager"
               />
             </div>
           ) : (

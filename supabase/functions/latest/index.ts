@@ -11,7 +11,10 @@ const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&or
 // CORS headers - allowing access from any origin
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma",
+  "Cache-Control": "no-cache, no-store, must-revalidate",
+  "Pragma": "no-cache",
+  "Expires": "0"
 };
 
 serve(async (req) => {
@@ -27,12 +30,19 @@ serve(async (req) => {
     console.log("Starting latest screenshot request");
     console.log(`API Endpoint: ${API_ENDPOINT}`);
     
-    // Fetch the latest screenshot metadata with proper authentication
+    // Parse URL to get query parameters
+    const url = new URL(req.url);
+    const cacheBuster = url.searchParams.get('t') || Date.now().toString();
+    console.log(`Request with cache buster: ${cacheBuster}`);
+    
+    // Fetch the latest screenshot metadata with proper authentication and no-cache headers
     const response = await fetch(API_ENDPOINT, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store",
+        "Pragma": "no-cache",
       }
     });
 
@@ -67,11 +77,16 @@ serve(async (req) => {
 
     console.log(`Found image URL: ${imageUrl}, fetching image...`);
     
-    // Fetch the actual image - Now using authentication headers for this request too
-    const imageRes = await fetch(imageUrl, {
+    // Add cache buster to image URL
+    const imageUrlWithCacheBuster = `${imageUrl}?t=${cacheBuster}`;
+    
+    // Fetch the actual image - Now using authentication headers and no-cache
+    const imageRes = await fetch(imageUrlWithCacheBuster, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Cache-Control": "no-cache, no-store",
+        "Pragma": "no-cache",
       }
     });
     
@@ -92,12 +107,14 @@ serve(async (req) => {
     
     console.log(`Successfully fetched image, content type: ${contentType}, size: ${buffer.byteLength} bytes`);
 
-    // Return the image with proper headers - REMOVED Content-Disposition to ensure GPT can process it
+    // Return the image with proper headers - no caching allowed
     return new Response(buffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=60", // Cache for 60 seconds
+        "Cache-Control": "no-cache, no-store, must-revalidate", 
+        "Pragma": "no-cache",
+        "Expires": "0",
         // DO NOT include "Content-Disposition": "attachment" here as it prevents GPT from viewing the image
         ...corsHeaders
       }
