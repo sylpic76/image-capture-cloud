@@ -1,130 +1,89 @@
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { createLogger } from './logger';
-import { toast } from 'sonner';
 import { requestMediaPermission, stopMediaTracks } from './mediaStream';
 
 const { logDebug, logError } = createLogger();
 
 /**
- * Hook to handle media stream acquisition and cleanup
+ * Hook to manage media stream permissions and state
  */
 export const useMediaStream = (
   status: string,
-  configRef: React.RefObject<any>,
-  permissionAttemptRef: React.RefObject<boolean>,
-  permissionInProgressRef: React.RefObject<boolean>,
+  configRef: React.MutableRefObject<any>,
+  permissionAttemptRef: React.MutableRefObject<boolean>,
+  permissionInProgressRef: React.MutableRefObject<boolean>,
   setActiveStatus: () => void,
   setErrorStatus: (error: Error) => void,
   setRequestingStatus: () => void,
   intervalSeconds: number,
-  setCountdown: (value: number) => void
+  setCountdown: (seconds: number) => void
 ) => {
+  // Store mediaStream in a ref to avoid re-renders
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const mountedRef = useRef(true);
+  const mountedRef = useRef<boolean>(true);
   
-  // Request permissions with improved event handling
-  const requestPermission = useCallback(async () => {
-    // Avoid multiple simultaneous permission requests
+  // Reset countdown and request screen capture permission
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     if (permissionInProgressRef.current) {
-      logDebug("Permission request already in progress, skipping");
+      logDebug("Permission already being requested, ignoring duplicate request");
       return false;
     }
-
-    // If we already have an active stream, no need to request permission again
-    if (mediaStreamRef.current && mediaStreamRef.current.active) {
-      logDebug("Media stream already active, using existing stream");
-      setActiveStatus();
-      setCountdown(intervalSeconds);
-      return true;
-    }
-
+    
     try {
-      logDebug("Requesting screen capture permission...");
       setRequestingStatus();
+      permissionInProgressRef.current = true;
       
-      if (permissionAttemptRef && 'current' in permissionAttemptRef) {
-        permissionAttemptRef.current = true;
-      }
+      // Set this to true - we've attempted to get permission at least once
+      permissionAttemptRef.current = true;
       
-      if (permissionInProgressRef && 'current' in permissionInProgressRef) {
-        permissionInProgressRef.current = true;
-      }
-      
-      // Use the extracted media permission function
-      const stream = await requestMediaPermission(configRef);
-      
-      // Reset the in-progress flag
-      if (permissionInProgressRef && 'current' in permissionInProgressRef) {
-        permissionInProgressRef.current = false;
-      }
-      
-      if (!stream) {
-        throw new Error("Failed to obtain media stream");
-      }
-      
-      // Add track ended event listeners
-      stream.getTracks().forEach(track => {
-        track.addEventListener('ended', () => {
-          logDebug(`Track ${track.id} ended naturally by user or system`);
-          if (mountedRef.current) {
-            stopCapture();
-          }
-        });
+      const stream = await requestMediaPermission({
+        audio: false,
+        video: true,
+        preferCurrentTab: !configRef.current.disableAdvancedSDK,
       });
       
-      // Store the stream in ref
+      // If component unmounted during permission request, cleanup and return
+      if (!mountedRef.current) {
+        stopMediaTracks(stream);
+        return false;
+      }
+      
       mediaStreamRef.current = stream;
       
-      if (mountedRef.current) {
-        setActiveStatus();
-        logDebug("Media stream obtained successfully, status set to active");
-        
-        // Start the countdown immediately for the first capture
-        setCountdown(intervalSeconds);
-      }
+      // Reset countdown when starting fresh capture
+      setCountdown(intervalSeconds);
+      setActiveStatus();
       
       return true;
     } catch (error) {
-      // Reset the in-progress flag on error
-      if (permissionInProgressRef && 'current' in permissionInProgressRef) {
+      if (mountedRef.current) {
+        logError("Failed to get screen capture permission", error);
+        setErrorStatus(error instanceof Error ? error : new Error(String(error)));
+      }
+      return false;
+    } finally {
+      if (mountedRef.current) {
         permissionInProgressRef.current = false;
       }
-      
-      logError("Permission request failed", error);
-      
-      if (mountedRef.current) {
-        setErrorStatus(error instanceof Error ? error : new Error(String(error)));
-        toast.error("Permission de capture d'écran refusée. Veuillez autoriser la capture d'écran pour utiliser cette fonctionnalité.");
-      }
-      
-      return false;
     }
-  }, [configRef, intervalSeconds, setActiveStatus, setCountdown, setErrorStatus, setRequestingStatus]);
-
-  // Stop the capture and clean up resources
+  }, [configRef, permissionAttemptRef, permissionInProgressRef, setActiveStatus, setErrorStatus, setRequestingStatus, intervalSeconds, setCountdown]);
+  
+  // Stop media tracks and clean up resources
   const stopCapture = useCallback(() => {
-    logDebug("Stopping capture");
-    
-    // Stop all media tracks using the extracted function
-    stopMediaTracks(mediaStreamRef.current);
-    mediaStreamRef.current = null;
+    if (mediaStreamRef.current) {
+      stopMediaTracks(mediaStreamRef.current);
+      mediaStreamRef.current = null;
+    }
   }, []);
   
-  // Cleanup on unmount
+  // Clean up on unmount
   useEffect(() => {
-    mountedRef.current = true;
-    
     return () => {
       mountedRef.current = false;
       stopCapture();
     };
   }, [stopCapture]);
-
-  return {
-    mediaStreamRef,
-    requestPermission,
-    stopCapture,
-    mountedRef
-  };
+  
+  return { mediaStreamRef, requestPermission, stopCapture, mountedRef };
 };

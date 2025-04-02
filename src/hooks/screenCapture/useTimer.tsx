@@ -1,94 +1,62 @@
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createLogger } from './logger';
 
 const { logDebug } = createLogger();
 
 /**
- * Hook to manage countdown timer for screen captures
+ * Hook to manage capture timer logic
  */
 export const useTimer = (
   intervalSeconds: number,
   status: string,
-  onTimerComplete: () => void
+  captureCallback: () => Promise<void>
 ) => {
-  const [countdown, setCountdown] = useState(intervalSeconds);
-  const timerRef = useRef<number | undefined>(undefined);
-  const mountedRef = useRef(true);
-
-  // Timer reset function
-  const resetTimer = useCallback(() => {
-    if (mountedRef.current) {
-      setCountdown(intervalSeconds);
-    }
-  }, [intervalSeconds]);
-
-  // Recursive countdown function for reliable timing
-  const recursiveCountdown = useCallback(async () => {
-    if (!mountedRef.current || status !== 'active') return;
-    
-    // Decrement the counter
-    setCountdown(prevCount => {
-      const newCount = prevCount <= 1 ? intervalSeconds : prevCount - 1;
-      logDebug(`Countdown: ${prevCount} -> ${newCount}`);
-      return newCount;
-    });
-    
-    // When countdown reaches 1, trigger capture
-    if (countdown <= 1) {
-      logDebug("Countdown reached threshold, triggering capture callback");
-      try {
-        await onTimerComplete();
-      } catch (err) {
-        console.error("Error during timer completion callback", err);
-      }
-      
-      // Reset countdown after capture
-      if (mountedRef.current) {
-        resetTimer();
-      }
-    }
-    
-    // Schedule the next iteration if still active
-    if (mountedRef.current && status === 'active') {
-      timerRef.current = window.setTimeout(recursiveCountdown, 1000);
-    }
-  }, [status, countdown, intervalSeconds, onTimerComplete, resetTimer]);
-
-  // Start or stop timer based on status
+  const [countdown, setCountdown] = useState<number>(intervalSeconds);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Set up the countdown timer
   useEffect(() => {
-    if (status === 'active') {
-      logDebug(`Starting countdown timer with interval: ${intervalSeconds}s`);
-      
-      // Start the recursive countdown
-      if (timerRef.current === undefined) {
-        recursiveCountdown();
+    if (status !== 'active') {
+      // Clear any existing timer if not active
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
-      
-      // Cleanup function
-      return () => {
-        if (timerRef.current !== undefined) {
-          window.clearTimeout(timerRef.current);
-          timerRef.current = undefined;
-        }
+      return;
+    }
+    
+    // If active, set up countdown
+    if (!timerRef.current) {
+      // Immediately tick once to start
+      const tick = async () => {
+        setCountdown(prevCountdown => {
+          const newCountdown = prevCountdown <= 1 ? intervalSeconds : prevCountdown - 1;
+          
+          // When countdown reaches threshold, trigger capture
+          if (prevCountdown <= 1) {
+            logDebug("Countdown reached threshold, triggering capture callback");
+            captureCallback();
+          }
+          
+          logDebug(`Countdown: ${prevCountdown} -> ${newCountdown}`);
+          return newCountdown;
+        });
       };
-    } else if (timerRef.current !== undefined) {
-      // If status is not active but timer is running, clear it
-      window.clearTimeout(timerRef.current);
-      timerRef.current = undefined;
+      
+      // Start the timer
+      tick();
+      timerRef.current = setInterval(tick, 1000);
     }
-  }, [status, intervalSeconds, recursiveCountdown]);
-
-  // Cleanup on unmount
-  useEffect(() => {
+    
+    // Cleanup timer on unmount or status change
     return () => {
-      mountedRef.current = false;
-      if (timerRef.current !== undefined) {
-        window.clearTimeout(timerRef.current);
-        timerRef.current = undefined;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, []);
-
-  return { countdown, resetTimer };
+  }, [intervalSeconds, status, captureCallback]);
+  
+  return { countdown, setCountdown };
 };
