@@ -17,6 +17,12 @@ interface ScreenshotGalleryProps {
 }
 
 const ScreenshotGallery = ({ screenshots, loading }: ScreenshotGalleryProps) => {
+  // Fonction pour ajouter un timestamp aux URLs d'images pour éviter le cache
+  const addCacheBuster = (url: string) => {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}t=${Date.now()}`;
+  };
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -39,9 +45,10 @@ const ScreenshotGallery = ({ screenshots, loading }: ScreenshotGalleryProps) => 
                 <SheetTrigger asChild>
                   <div className="relative overflow-hidden rounded-md border border-border h-32 bg-muted/30 cursor-pointer hover:opacity-90 transition-opacity">
                     <img 
-                      src={screenshot.image_url}
+                      src={addCacheBuster(screenshot.image_url)}
                       alt="Screenshot"
                       className="w-full h-full object-cover"
+                      loading="eager"
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1">
                       {new Date(screenshot.created_at).toLocaleTimeString()}
@@ -55,7 +62,7 @@ const ScreenshotGallery = ({ screenshots, loading }: ScreenshotGalleryProps) => 
                     </h3>
                     <div className="flex-1 relative overflow-auto">
                       <img 
-                        src={screenshot.image_url}
+                        src={addCacheBuster(screenshot.image_url)}
                         alt="Screenshot complet"
                         className="w-full h-auto object-contain max-h-[calc(80vh-6rem)]"
                       />
