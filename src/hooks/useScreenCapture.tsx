@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { ScreenCaptureStatus, ScreenCaptureConfig } from './screenCapture/types';
 import { defaultConfig } from './screenCapture/config';
@@ -9,6 +9,8 @@ import { useTimer } from './screenCapture/useTimer';
 import { useCaptureState } from './screenCapture/useCaptureState';
 import { useMediaStream } from './screenCapture/useMediaStream';
 import { useDiagnostics } from './screenCapture/useDiagnostics';
+import { setupNetworkMonitor } from './screenCapture/networkMonitor';
+import { useEffect } from 'react';
 
 // Set the default interval to 5 seconds (5000ms)
 export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) => {
@@ -25,11 +27,17 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
   } = useCaptureState(config);
   
   // Use the timer hook for countdown logic
-  const { countdown } = useTimer(intervalSeconds, status, async () => {
+  const { countdown, setCountdown } = useTimer(intervalSeconds, status, async () => {
     if (status === 'active') {
       await handleCaptureScreen();
     }
   });
+  
+  // Set up network monitoring
+  useEffect(() => {
+    const cleanupMonitor = setupNetworkMonitor();
+    return () => cleanupMonitor();
+  }, []);
   
   // Use the media stream hook for handling permissions and stream
   const { mediaStreamRef, requestPermission, stopCapture, mountedRef } = useMediaStream(
@@ -41,12 +49,12 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     setErrorStatus,
     setRequestingStatus,
     intervalSeconds,
-    () => {}
+    setCountdown
   );
   
   // Use diagnostics hook
   const { getDiagnostics } = useDiagnostics(
-    status,
+    status as ScreenCaptureStatus,
     countdown,
     mediaStreamRef,
     lastError,
@@ -101,6 +109,11 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       );
       
       return url;
+    } catch (error) {
+      logDebug("Capture failed but we're handling it gracefully");
+      // Don't change status to error just because of capture failures
+      // Only log the error but don't interrupt the capture loop
+      return null;
     } finally {
       isCapturingRef.current = false;
     }

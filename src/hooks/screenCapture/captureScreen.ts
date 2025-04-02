@@ -64,6 +64,7 @@ export const captureScreen = async (
       incrementSuccessCount();
       
       // Log de la capture réussie
+      logDebug("✅ Capture envoyée à Supabase @" + new Date().toISOString());
       console.log("Capture envoyée à Supabase @", new Date().toISOString());
       
       return url;
@@ -74,6 +75,7 @@ export const captureScreen = async (
       
       if (retryCount > maxRetries) {
         incrementFailureCount();
+        // Only show error toast after all retries have failed, not for every retry
         toast.error("La capture d'écran a échoué après plusieurs tentatives. Vérifiez votre connexion réseau et réessayez.");
         return null;
       }

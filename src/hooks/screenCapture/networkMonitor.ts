@@ -38,7 +38,12 @@ export const setupNetworkMonitor = (): () => void => {
         const errorMessage = errorMessages[status] || `Erreur ${status}: ${response.statusText}`;
         
         logError(`Erreur réseau ${status} pour ${url}`, { status, statusText: response.statusText });
-        toast.error(`Erreur réseau: ${errorMessage}`);
+        
+        // Only show toast for non-background operations to avoid spamming
+        const isBackground = url.includes('?t=');
+        if (!isBackground) {
+          toast.error(`Erreur réseau: ${errorMessage}`);
+        }
       }
       
       return response;
@@ -47,15 +52,31 @@ export const setupNetworkMonitor = (): () => void => {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logError(`Erreur réseau pour ${url}`, error);
         
-        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        // Only show toast errors if it's not a background refresh
+        const isBackground = url.includes('?t=');
+        if (!isBackground && (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError'))) {
           toast.error("Erreur réseau. Vérifiez votre connexion internet et que le serveur est accessible.");
-        } else {
+        } else if (!isBackground) {
           toast.error(`Erreur: ${errorMessage}`);
         }
       }
       throw error;
     }
   };
+  
+  // Surveiller l'état de la connexion
+  const handleOnline = () => {
+    logDebug("🌐 Connexion internet rétablie");
+    toast.success("Connexion internet rétablie");
+  };
+  
+  const handleOffline = () => {
+    logDebug("🌐 Connexion internet perdue");
+    toast.error("Connexion internet perdue. Les captures d'écran ne seront pas envoyées.");
+  };
+  
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
   
   // Surveiller les erreurs non gérées
   const originalOnError = window.onerror;
@@ -70,6 +91,8 @@ export const setupNetworkMonitor = (): () => void => {
   return () => {
     window.fetch = originalFetch;
     window.onerror = originalOnError;
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
     logDebug("Moniteur réseau désactivé");
   };
 };

@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { createLogger } from './logger';
-import { ScreenCaptureDiagnostics } from './types';
+import { ScreenCaptureDiagnostics, ScreenCaptureStatus } from './types';
 
 const { logDebug } = createLogger();
 
@@ -9,7 +9,7 @@ const { logDebug } = createLogger();
  * Hook to provide diagnostic information about screen capture
  */
 export const useDiagnostics = (
-  status: string,
+  status: ScreenCaptureStatus,
   countdown: number,
   mediaStreamRef: React.RefObject<MediaStream | null>,
   lastError: Error | null,

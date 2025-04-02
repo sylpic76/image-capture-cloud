@@ -42,14 +42,22 @@ export const useMediaStream = (
     try {
       logDebug("Requesting screen capture permission...");
       setRequestingStatus();
-      permissionAttemptRef.current = true;
-      permissionInProgressRef.current = true;
+      
+      if (permissionAttemptRef && 'current' in permissionAttemptRef) {
+        permissionAttemptRef.current = true;
+      }
+      
+      if (permissionInProgressRef && 'current' in permissionInProgressRef) {
+        permissionInProgressRef.current = true;
+      }
       
       // Use the extracted media permission function
       const stream = await requestMediaPermission(configRef);
       
       // Reset the in-progress flag
-      permissionInProgressRef.current = false;
+      if (permissionInProgressRef && 'current' in permissionInProgressRef) {
+        permissionInProgressRef.current = false;
+      }
       
       if (!stream) {
         throw new Error("Failed to obtain media stream");
@@ -79,7 +87,9 @@ export const useMediaStream = (
       return true;
     } catch (error) {
       // Reset the in-progress flag on error
-      permissionInProgressRef.current = false;
+      if (permissionInProgressRef && 'current' in permissionInProgressRef) {
+        permissionInProgressRef.current = false;
+      }
       
       logError("Permission request failed", error);
       
