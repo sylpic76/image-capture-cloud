@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlayCircle, PauseCircle, Camera } from "lucide-react";
+import { Loader2, PlayCircle, PauseCircle, Camera, Lock } from "lucide-react";
 import ScreenCaptureDebugger from './ScreenCaptureDebugger';
 
 interface ScreenCaptureControlsProps {
@@ -11,13 +11,15 @@ interface ScreenCaptureControlsProps {
   countdown: number;
   toggleCapture: () => void;
   getDiagnostics?: () => any;
+  sdkDisabled?: boolean;
 }
 
 const ScreenCaptureControls = ({ 
   status, 
   countdown, 
   toggleCapture,
-  getDiagnostics 
+  getDiagnostics,
+  sdkDisabled = true
 }: ScreenCaptureControlsProps) => {
   const renderStatus = () => {
     switch (status) {
@@ -79,6 +81,12 @@ const ScreenCaptureControls = ({
           <CardTitle className="text-lg flex items-center gap-2">
             <Camera size={20} className="text-primary" />
             Capture d'écran
+            {sdkDisabled && (
+              <Badge variant="secondary" className="text-xs ml-2 flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                SDK limité
+              </Badge>
+            )}
           </CardTitle>
           <div className="flex items-center gap-2">
             {renderStatus()}

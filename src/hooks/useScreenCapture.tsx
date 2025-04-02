@@ -1,11 +1,18 @@
-
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 export type ScreenCaptureStatus = 'idle' | 'requesting-permission' | 'active' | 'paused' | 'error';
 
+// Configuration pour limiter l'accès aux API sensibles
+const defaultConfig = {
+  disableAdvancedSDK: true, // Désactive par défaut les fonctionnalités avancées des SDK
+  requestFrameRate: 1, // Limite le taux de rafraîchissement (1 = très lent)
+  enforceBasicMode: true, // Force le mode basique de capture
+  useLowResolution: true, // Utilise une résolution plus basse
+};
+
 // Set the default interval to 5 seconds
-export const useScreenCapture = (intervalSeconds = 5) => {
+export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) => {
   const [status, setStatus] = useState<ScreenCaptureStatus>('idle');
   const [countdown, setCountdown] = useState(intervalSeconds);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
@@ -14,6 +21,20 @@ export const useScreenCapture = (intervalSeconds = 5) => {
   const captureCountRef = useRef(0);
   const successCountRef = useRef(0);
   const failureCountRef = useRef(0);
+  const configRef = useRef(config);
+
+  // Appliquer les restrictions de configuration au démarrage
+  useEffect(() => {
+    configRef.current = {
+      ...defaultConfig,
+      ...config,
+    };
+    
+    // Verrouiller la configuration pour qu'elle ne puisse pas être modifiée
+    Object.freeze(configRef.current);
+    
+    logDebug(`Configuration verrouillée: ${JSON.stringify(configRef.current)}`);
+  }, [config]);
 
   const logDebug = (message: string) => {
     console.log(`[useScreenCapture] ${message}`);
@@ -30,19 +51,41 @@ export const useScreenCapture = (intervalSeconds = 5) => {
       logDebug("Requesting screen capture permission...");
       setStatus('requesting-permission');
       
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { 
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+      // Configuration restreinte pour la capture d'écran
+      const constraints: MediaStreamConstraints = {
+        video: {
+          width: configRef.current.useLowResolution ? { ideal: 1280 } : { ideal: 1920 },
+          height: configRef.current.useLowResolution ? { ideal: 720 } : { ideal: 1080 },
+          frameRate: configRef.current.requestFrameRate,
         }
-      });
+      };
+      
+      // Utilisation d'une API plus basique si configuré ainsi
+      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      
+      // Désactiver certaines fonctionnalités avancées des pistes si nécessaire
+      if (configRef.current.disableAdvancedSDK && stream.getTracks().length > 0) {
+        stream.getTracks().forEach(track => {
+          // Désactiver certaines capacités avancées qui pourraient causer des problèmes de permission
+          if (track.getConstraints && typeof track.getConstraints === 'function') {
+            try {
+              // Utiliser seulement les contraintes de base
+              track.applyConstraints({
+                advanced: [] // Supprimer toutes les contraintes avancées
+              }).catch(e => logDebug(`Contraintes simplifiées: ${e}`));
+            } catch (e) {
+              logDebug(`Impossible d'appliquer les contraintes simplifiées: ${e}`);
+            }
+          }
+        });
+      }
       
       logDebug("Permission granted, stream obtained");
       logDebug(`Stream tracks: ${stream.getTracks().length}, active: ${stream.active}`);
       
       setMediaStream(stream);
       setStatus('active');
-      toast.success("Capture d'écran activée. L'application peut maintenant capturer votre écran.");
+      toast.success("Capture d'écran activée avec mode restreint. L'application peut maintenant capturer votre écran.");
       return true;
     } catch (error) {
       logError("Permission request failed", error);
@@ -179,7 +222,7 @@ export const useScreenCapture = (intervalSeconds = 5) => {
   useEffect(() => {
     const statsInterval = setInterval(() => {
       if (status === 'active') {
-        logDebug(`Capture stats: attempts=${captureCountRef.current}, success=${successCountRef.current}, failures=${failureCountRef.current}`);
+        logDebug(`Capture stats: attempts=${captureCountRef.current}, success=${successCountRef.current}, failures=${failureCountRef.current}, config=${JSON.stringify(configRef.current)}`);
       }
     }, 30000);
     
@@ -256,7 +299,9 @@ export const useScreenCapture = (intervalSeconds = 5) => {
       captures: captureCountRef.current,
       successful: successCountRef.current,
       failed: failureCountRef.current,
-      browserInfo: navigator.userAgent
+      configuration: {...configRef.current},
+      browserInfo: navigator.userAgent,
+      isSdkDisabled: configRef.current.disableAdvancedSDK
     };
   }, [status, countdown, mediaStream, lastError]);
 
@@ -267,6 +312,7 @@ export const useScreenCapture = (intervalSeconds = 5) => {
     stopCapture,
     captureScreen,
     lastCaptureUrl,
-    getDiagnostics
+    getDiagnostics,
+    sdkDisabled: configRef.current.disableAdvancedSDK
   };
 };

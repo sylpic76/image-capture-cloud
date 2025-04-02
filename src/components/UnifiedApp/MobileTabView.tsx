@@ -30,6 +30,7 @@ interface MobileTabViewProps {
   fetchLatestScreenshot: () => Promise<void>;
   imageProcessingStatus?: 'idle' | 'processing' | 'success' | 'error';
   getDiagnostics?: () => any;
+  sdkDisabled?: boolean;
 }
 
 const MobileTabView = ({
@@ -54,6 +55,7 @@ const MobileTabView = ({
   fetchLatestScreenshot,
   imageProcessingStatus = 'idle',
   getDiagnostics,
+  sdkDisabled = true,
 }: MobileTabViewProps) => {
   return (
     <div className="container mx-auto px-4 py-6">
@@ -71,6 +73,7 @@ const MobileTabView = ({
             countdown={countdown}
             toggleCapture={toggleCapture}
             getDiagnostics={getDiagnostics}
+            sdkDisabled={sdkDisabled}
           />
           
           {/* Latest Image Endpoint */}

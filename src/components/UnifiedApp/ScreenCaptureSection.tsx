@@ -13,13 +13,15 @@ interface ScreenCaptureSectionProps {
   countdown: number;
   toggleCapture: () => void;
   getDiagnostics?: () => any;
+  sdkDisabled?: boolean;
 }
 
 const ScreenCaptureSection = ({ 
   status, 
   countdown, 
   toggleCapture,
-  getDiagnostics
+  getDiagnostics,
+  sdkDisabled
 }: ScreenCaptureSectionProps) => {
   // Latest screenshot state
   const [latestScreenshot, setLatestScreenshot] = useState<string | null>(null);
@@ -86,6 +88,7 @@ const ScreenCaptureSection = ({
         countdown={countdown}
         toggleCapture={toggleCapture}
         getDiagnostics={getDiagnostics}
+        sdkDisabled={sdkDisabled}
       />
       
       {/* Latest Image Endpoint */}

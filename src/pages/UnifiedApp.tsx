@@ -8,11 +8,19 @@ import ScreenCaptureSection from "@/components/UnifiedApp/ScreenCaptureSection";
 import AssistantSection from "@/components/UnifiedApp/AssistantSection";
 import MobileTabView from "@/components/UnifiedApp/MobileTabView";
 
+// Configuration restrictive pour la capture d'écran
+const captureConfig = {
+  disableAdvancedSDK: true,
+  requestFrameRate: 1,
+  enforceBasicMode: true,
+  useLowResolution: true,
+};
+
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
-  // Screen capture functionality - changed from 10 to 5 seconds
-  const { status, countdown, toggleCapture, getDiagnostics } = useScreenCapture(5);
+  // Screen capture functionality - avec configuration sécurisée
+  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5, captureConfig);
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -95,6 +103,7 @@ const UnifiedApp = () => {
         fetchLatestScreenshot={fetchLatestScreenshot}
         imageProcessingStatus={imageProcessingStatus}
         getDiagnostics={getDiagnostics}
+        sdkDisabled={sdkDisabled}
       />
     );
   }
@@ -113,6 +122,7 @@ const UnifiedApp = () => {
           countdown={countdown}
           toggleCapture={toggleCapture}
           getDiagnostics={getDiagnostics}
+          sdkDisabled={sdkDisabled}
         />
         
         {/* Right column - Assistant IA (2/3 width) */}
