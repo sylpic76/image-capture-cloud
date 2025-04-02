@@ -33,7 +33,7 @@ serve(async (req) => {
     const { message, screenshot } = await req.json();
     
     // System message for consistent behavior
-    const systemInstruction = `Tu es un assistant expert en développement d'applications web et mobile full stack. 
+    const systemPrompt = `Tu es un assistant expert en développement d'applications web et mobile full stack. 
     Tu dois fournir des réponses techniques, précises et orientées vers la résolution de problèmes de développement.
     Tu peux suggérer des améliorations de code, des corrections de bugs, et des optimisations.
     Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`;
@@ -45,27 +45,30 @@ serve(async (req) => {
     console.log("Sending request to Gemini API...");
     console.log(`API URL: ${GEMINI_API_URL}`);
     
-    // Préparer les parties du message
-    const contents = [];
+    // Format de requête pour l'API Gemini v1beta avec support d'image - CORRECTION DU FORMAT
+    const requestBody = {
+      model: "gemini-1.5-pro",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: systemPrompt + "\n\n" + userMessage }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2000,
+      }
+    };
     
-    // Ajouter l'instruction système comme première partie
-    contents.push({
-      parts: [{ text: systemInstruction }]
-    });
-    
-    // Préparer les parties du message utilisateur
-    const userParts = [];
-    
-    // 1. Ajouter le texte du message
-    userParts.push({ text: userMessage });
-    
-    // 2. Ajouter l'image si elle est fournie
+    // Ajouter l'image si elle est fournie
     if (screenshot && screenshot.length > 0) {
       console.log("Screenshot detected, processing image for Gemini Vision API");
       imageProcessed = true;
       
-      // Ajouter l'image encodée en base64 au message
-      userParts.push({
+      // Modifier la requête pour inclure l'image
+      requestBody.contents[0].parts.push({
         inlineData: {
           data: screenshot.replace(/^data:image\/(png|jpeg|jpg);base64,/, ''), // Enlever le préfixe data:image si présent
           mimeType: screenshot.startsWith('data:image/png') ? "image/png" : "image/jpeg"
@@ -73,21 +76,7 @@ serve(async (req) => {
       });
     }
     
-    // Ajouter les parties utilisateur au contenu
-    contents.push({
-      parts: userParts
-    });
-    
-    // Format de requête pour l'API Gemini v1beta avec support d'image
-    const requestBody = {
-      contents: contents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2000,
-      }
-    };
-    
-    console.log(`API request payload preview:`, JSON.stringify(requestBody, null, 2).substring(0, 200) + "...");
+    console.log(`API request payload preview:`, JSON.stringify(requestBody).substring(0, 200) + "...");
     
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: "POST",
@@ -119,7 +108,7 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Gemini API response received successfully");
 
-    // Extract and return the assistant's response - Adaptation pour le format de réponse v1beta
+    // Extract and return the assistant's response - Format corrigé pour la version v1beta
     const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Problème avec la réponse de l'API.";
 
     return new Response(
