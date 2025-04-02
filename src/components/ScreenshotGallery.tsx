@@ -20,16 +20,18 @@ interface ScreenshotGalleryProps {
 
 const ScreenshotGallery = ({ screenshots, loading }: ScreenshotGalleryProps) => {
   const [refreshing, setRefreshing] = useState(false);
+  const [imageTimestamp, setImageTimestamp] = useState(Date.now());
   
   // Fonction pour ajouter un timestamp aux URLs d'images pour éviter le cache
   const addCacheBuster = (url: string) => {
     const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}t=${Date.now()}`;
+    return `${url}${separator}t=${imageTimestamp}`;
   };
   
   // Fonction pour rafraîchir manuellement les images
   const refreshImages = () => {
     setRefreshing(true);
+    setImageTimestamp(Date.now());
     setTimeout(() => setRefreshing(false), 1000);
     toast.success("Images rafraîchies");
   };

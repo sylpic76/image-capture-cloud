@@ -34,16 +34,19 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       
       if (useScreenshots) {
         try {
+          setImageProcessingStatus('processing');
           screenshotBase64 = await fetchLatestScreenshot(setImageProcessingStatus);
           if (screenshotBase64) {
             console.log("Screenshot successfully retrieved for AI processing");
           } else {
             console.warn("Screenshot retrieval failed, proceeding without image");
             toast.warning("Impossible d'obtenir la capture d'écran récente. La question sera traitée sans image.");
+            setImageProcessingStatus('error');
           }
         } catch (error) {
           console.error('Erreur lors de la récupération de la capture:', error);
           toast.error("Impossible d'obtenir la capture d'écran. La question sera traitée sans image.");
+          setImageProcessingStatus('error');
         }
       }
       
