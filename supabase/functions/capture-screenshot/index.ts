@@ -101,26 +101,25 @@ serve(async (req) => {
     const imageUrl = signedUrlData.signedUrl
     console.log(`[${requestId}] Signed URL created successfully: ${imageUrl.substring(0, 100)}...`)
     
-    // Log the screenshot in the database
-    // Note: We're using explicit column names to avoid schema cache issues
-    console.log(`[${requestId}] Logging screenshot in database`)
-    const { data: logData, error: logError } = await supabaseAdmin
-      .from('screenshot_log')
-      .insert([
-        { 
-          image_url: imageUrl,
-          file_name: filename,
-          file_size: buffer.length,
-        },
-      ])
-      .select()
-    
-    if (logError) {
-      console.error(`[${requestId}] Database log error details:`, logError)
-      throw new Error(`Database error: ${logError.message || JSON.stringify(logError)}`)
-    }
-    
-    console.log(`[${requestId}] Database log successful:`, logData)
+    // COMMENTED OUT: Database insert operation that was causing the issue
+    // console.log(`[${requestId}] Logging screenshot in database`)
+    // const { data: logData, error: logError } = await supabaseAdmin
+    //   .from('screenshot_log')
+    //   .insert([
+    //     { 
+    //       image_url: imageUrl,
+    //       file_name: filename,
+    //       file_size: buffer.length,
+    //     },
+    //   ])
+    //   .select()
+    // 
+    // if (logError) {
+    //   console.error(`[${requestId}] Database log error details:`, logError)
+    //   throw new Error(`Database error: ${logError.message || JSON.stringify(logError)}`)
+    // }
+    // 
+    // console.log(`[${requestId}] Database log successful:`, logData)
 
     // Return the signed image URL
     console.log(`[${requestId}] Request completed successfully`)
