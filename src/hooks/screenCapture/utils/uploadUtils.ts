@@ -17,6 +17,12 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
     // Get the anon key directly from environment variables
     const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
+    // Log key existence (but not the actual key for security)
+    logDebug(`SUPABASE_ANON_KEY exists: ${!!SUPABASE_ANON_KEY}`);
+    if (!SUPABASE_ANON_KEY) {
+      throw new Error("SUPABASE_ANON_KEY is missing from environment variables");
+    }
+    
     logDebug(`Preparing request to ${endpoint}`);
     
     console.log(`[uploadScreenshot] 📤 Capture #${captureId}, envoi vers ${endpoint}`);
@@ -25,7 +31,9 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
       method: "POST",
       headers: {
         "Content-Type": blob.type,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, // Correct authorization header format
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, // Explicit bearer format
+        // Also add as apikey header for compatibility
+        "apikey": SUPABASE_ANON_KEY
       },
       body: blob,
       // Add timeout to prevent hanging requests
