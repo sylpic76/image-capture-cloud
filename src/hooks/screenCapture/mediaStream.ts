@@ -100,6 +100,7 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
       logDebug(`Stopping track: ${track.kind}, enabled: ${track.enabled}, muted: ${track.muted}`);
       
       // Vérifier si la piste est déjà arrêtée
+      // Fix: Correct comparison between MediaStreamTrack.readyState and 'ended'
       if (track.readyState === 'ended') {
         logDebug(`Track ${track.id} already ended, skipping`);
         return;
