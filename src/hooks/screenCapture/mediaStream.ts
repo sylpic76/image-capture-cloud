@@ -33,10 +33,14 @@ export const requestMediaPermission = async (
       }
     };
     
+    // Inclure l'audio si demandé dans la configuration
+    if (configRef.current.captureWithAudio) {
+      constraints.audio = true;
+    }
+    
     logDebug(`Requesting media with constraints: ${JSON.stringify(constraints)}`);
     
     // Utiliser directement getDisplayMedia sans timeout pour éviter les conflits
-    // Le navigateur gère déjà son propre timeout pour la demande d'autorisation
     try {
       // Ajout d'un mécanisme pour éviter les appels simultanés
       const streamPromise = navigator.mediaDevices.getDisplayMedia(constraints);
