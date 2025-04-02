@@ -2,8 +2,9 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Pause, Play } from "lucide-react";
+import { Clock, Pause, Play, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 interface ScreenCaptureControlsProps {
   status: string;
@@ -14,6 +15,15 @@ interface ScreenCaptureControlsProps {
 const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptureControlsProps) => {
   const isActive = status === 'active';
   const interval = 5; // Set this to match the 5 second interval
+  
+  // Afficher des logs dans la console pour suivre l'état et le compte à rebours
+  React.useEffect(() => {
+    console.log(`[ScreenCapture] Status: ${status}, Countdown: ${countdown}/${interval}`);
+    
+    if (status === 'error') {
+      console.error('[ScreenCapture] Capture error detected');
+    }
+  }, [status, countdown, interval]);
   
   return (
     <Card className="modern-card overflow-hidden">
@@ -53,7 +63,10 @@ const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptu
           
           <Button 
             variant={isActive ? "destructive" : "default"}
-            onClick={toggleCapture}
+            onClick={() => {
+              console.log('[ScreenCapture] Toggle capture button clicked');
+              toggleCapture();
+            }}
             className="w-full flex items-center justify-center gap-2 py-6 shadow-md"
             size="lg"
           >
@@ -67,8 +80,14 @@ const ScreenCaptureControls = ({ status, countdown, toggleCapture }: ScreenCaptu
           
           {status === 'error' && (
             <div className="mt-2 p-4 bg-destructive/10 text-destructive rounded-lg text-sm border border-destructive/20">
-              <p className="font-medium">Erreur de permission</p>
-              <p>Veuillez autoriser la capture d'écran pour utiliser cette fonctionnalité.</p>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Erreur de permission</p>
+                  <p>Veuillez autoriser la capture d'écran pour utiliser cette fonctionnalité.</p>
+                  <p className="mt-1 text-xs opacity-70">Consultez les logs de la console pour plus de détails (F12)</p>
+                </div>
+              </div>
             </div>
           )}
           {status === 'idle' && (

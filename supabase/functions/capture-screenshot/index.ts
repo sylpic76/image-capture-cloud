@@ -17,6 +17,27 @@ const corsHeaders = {
   "Expires": "0"
 };
 
+// Function to log errors with details
+function logError(message: string, error: any) {
+  console.error(`[ERROR] ${message}:`, error);
+  
+  // Log additional diagnostic information if available
+  try {
+    if (error instanceof Error) {
+      console.error(`Name: ${error.name}`);
+      console.error(`Message: ${error.message}`);
+      console.error(`Stack: ${error.stack}`);
+    }
+    
+    if (error.response) {
+      console.error(`Response status: ${error.response.status}`);
+      console.error(`Response data:`, error.response.data);
+    }
+  } catch (loggingError) {
+    console.error("Error while logging error details:", loggingError);
+  }
+}
+
 serve(async (req: Request) => {
   // Handle preflight requests for CORS
   if (req.method === "OPTIONS") {
@@ -24,19 +45,21 @@ serve(async (req: Request) => {
   }
 
   try {
-    console.log("Starting screenshot capture process");
+    console.log("[CAPTURE] Starting screenshot capture process");
 
     // Parse the form data containing the screenshot
     const data = await req.formData();
     const file = data.get("screenshot") as File;
     
     if (!file) {
-      console.error("No screenshot file provided in request");
+      console.error("[CAPTURE] No screenshot file provided in request");
       return new Response(
         JSON.stringify({ error: "No screenshot provided" }),
         { headers: corsHeaders, status: 400 }
       );
     }
+
+    console.log(`[CAPTURE] File received: ${file.name}, type: ${file.type}, size: ${file.size} bytes`);
 
     // Generate a unique filename with timestamp format (YYYYMMDD_HHmmss)
     const now = new Date();
@@ -48,7 +71,7 @@ serve(async (req: Request) => {
     const formattedDate = `${dateStr.slice(0,8)}_${dateStr.slice(8,14)}`;
     const filename = `screen_${formattedDate}.png`;
     
-    console.log(`Processing screenshot: ${filename}`);
+    console.log(`[CAPTURE] Processing screenshot: ${filename}`);
     
     // Upload to Supabase Storage with no-cache headers
     const { data: uploadData, error: uploadError } = await supabase
@@ -61,12 +84,14 @@ serve(async (req: Request) => {
       });
 
     if (uploadError) {
-      console.error("Upload error:", uploadError);
+      logError("[CAPTURE] Upload error", uploadError);
       return new Response(
         JSON.stringify({ error: "Failed to upload screenshot", details: uploadError }),
         { headers: corsHeaders, status: 500 }
       );
     }
+
+    console.log(`[CAPTURE] Successfully uploaded file: ${filename}`);
 
     // Get public URL
     const { data: publicUrlData } = supabase
@@ -75,7 +100,7 @@ serve(async (req: Request) => {
       .getPublicUrl(filename);
 
     const publicUrl = publicUrlData.publicUrl;
-    console.log(`Screenshot uploaded successfully: ${publicUrl}`);
+    console.log(`[CAPTURE] Screenshot uploaded successfully: ${publicUrl}`);
 
     // Add entry to screenshot_log table
     const { data: logData, error: logError } = await supabase
@@ -83,28 +108,32 @@ serve(async (req: Request) => {
       .insert([{ image_url: publicUrl }]);
 
     if (logError) {
-      console.error("Log error:", logError);
+      logError("[CAPTURE] Log error", logError);
       return new Response(
         JSON.stringify({ error: "Failed to log screenshot", details: logError }),
         { headers: corsHeaders, status: 500 }
       );
     }
 
+    console.log("[CAPTURE] Screenshot logged to database successfully");
+
     // Remove old screenshots, keeping only the 3 most recent
     try {
       // Get all screenshots ordered by created_at
       const { data: screenshots, error: fetchError } = await supabase
         .from("screenshot_log")
-        .select("id, image_url")
+        .select("id, image_url, created_at")
         .order("created_at", { ascending: false });
       
       if (fetchError) {
         throw fetchError;
       }
       
+      console.log(`[CAPTURE] Found ${screenshots?.length || 0} total screenshots in database`);
+      
       // If we have more than 3 screenshots, delete the older ones
       if (screenshots && screenshots.length > 3) {
-        console.log(`Found ${screenshots.length} screenshots, keeping only the 3 most recent`);
+        console.log(`[CAPTURE] Keeping only the 3 most recent screenshots, deleting ${screenshots.length - 3}`);
         
         // Get IDs to delete (everything after the first 3)
         const toDelete = screenshots.slice(3).map(s => s.id);
@@ -116,7 +145,9 @@ serve(async (req: Request) => {
           .in('id', toDelete);
           
         if (deleteError) {
-          console.error("Error deleting old screenshot records:", deleteError);
+          logError("[CAPTURE] Error deleting old screenshot records", deleteError);
+        } else {
+          console.log(`[CAPTURE] Successfully deleted ${toDelete.length} old records from database`);
         }
         
         // Extract file paths from URLs to delete from storage
@@ -135,14 +166,14 @@ serve(async (req: Request) => {
             .remove(storageFiles);
             
           if (storageDeleteError) {
-            console.error("Error deleting old files from storage:", storageDeleteError);
+            logError("[CAPTURE] Error deleting old files from storage", storageDeleteError);
           } else {
-            console.log(`Successfully deleted ${storageFiles.length} old screenshots`);
+            console.log(`[CAPTURE] Successfully deleted ${storageFiles.length} old screenshots from storage`);
           }
         }
       }
     } catch (cleanupError) {
-      console.error("Error during cleanup:", cleanupError);
+      logError("[CAPTURE] Error during cleanup", cleanupError);
       // We don't want to fail the whole request if cleanup fails
     }
 
@@ -150,14 +181,19 @@ serve(async (req: Request) => {
       JSON.stringify({ 
         success: true, 
         url: publicUrl,
-        message: "Screenshot captured and stored successfully" 
+        message: "Screenshot captured and stored successfully",
+        timestamp: new Date().toISOString()
       }),
       { headers: corsHeaders, status: 200 }
     );
   } catch (error) {
-    console.error("Server error:", error);
+    logError("[CAPTURE] Server error", error);
     return new Response(
-      JSON.stringify({ error: "Server error", details: error.message }),
+      JSON.stringify({ 
+        error: "Server error", 
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      }),
       { headers: corsHeaders, status: 500 }
     );
   }
