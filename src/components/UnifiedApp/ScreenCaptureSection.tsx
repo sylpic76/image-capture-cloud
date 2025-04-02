@@ -33,7 +33,7 @@ const ScreenCaptureSection = ({
     try {
       setIsImageLoading(true);
       
-      // Add cache-busting query parameter to prevent browser caching
+      // Add strong cache-busting query parameter to prevent browser caching
       const cacheBuster = `?t=${Date.now()}`;
       
       const response = await fetch(`${latestImageEndpoint}${cacheBuster}`, {
@@ -42,6 +42,8 @@ const ScreenCaptureSection = ({
           'Cache-Control': 'no-cache, no-store',
           'Pragma': 'no-cache',
         },
+        // Skip the cache entirely
+        cache: 'no-store',
       });
 
       if (response.ok) {
@@ -70,7 +72,7 @@ const ScreenCaptureSection = ({
     
     const intervalId = setInterval(() => {
       fetchLatestScreenshot();
-    }, 5000); // Changed from 10000 to 5000
+    }, 5000); // Set to 5000ms (5 seconds)
     
     return () => clearInterval(intervalId);
   }, []);

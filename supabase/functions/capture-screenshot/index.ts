@@ -10,10 +10,13 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req: Request) => {
-  // CORS headers
+  // CORS headers with cache control
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0"
   };
 
   // Handle preflight requests
@@ -44,13 +47,16 @@ serve(async (req: Request) => {
     const formattedDate = `${dateStr.slice(0,8)}_${dateStr.slice(8,14)}`;
     const filename = `screen_${formattedDate}.png`;
     
-    // Upload to Supabase Storage
+    console.log(`Processing screenshot: ${filename}`);
+    
+    // Upload to Supabase Storage with cache control
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from("screenshots")
       .upload(filename, file, {
         contentType: "image/png",
-        cacheControl: "3600",
+        cacheControl: "max-age=0, no-cache",
+        upsert: true // Override if file exists
       });
 
     if (uploadError) {
@@ -65,9 +71,15 @@ serve(async (req: Request) => {
     const { data: publicUrlData } = supabase
       .storage
       .from("screenshots")
-      .getPublicUrl(filename);
+      .getPublicUrl(filename, {
+        download: false,
+        transform: {
+          quality: 95
+        }
+      });
 
     const publicUrl = publicUrlData.publicUrl;
+    console.log(`Screenshot uploaded successfully: ${publicUrl}`);
 
     // Add entry to screenshot_log table
     const { data: logData, error: logError } = await supabase

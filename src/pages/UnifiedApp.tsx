@@ -11,8 +11,8 @@ import MobileTabView from "@/components/UnifiedApp/MobileTabView";
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
-  // Screen capture functionality
-  const { status, countdown, toggleCapture } = useScreenCapture(10);
+  // Screen capture functionality - changed from 10 to 5 seconds
+  const { status, countdown, toggleCapture } = useScreenCapture(5);
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -25,7 +25,7 @@ const UnifiedApp = () => {
     isLoading,
     handleSubmit,
     saveConversation,
-    clearConversation, // Add the new clearConversation function
+    clearConversation,
     imageProcessingStatus
   } = useAssistantMessages(useScreenshots);
   
@@ -42,10 +42,17 @@ const UnifiedApp = () => {
   const fetchLatestScreenshot = async () => {
     try {
       setIsImageLoading(true);
-      const response = await fetch(latestImageEndpoint, {
+      
+      // Add cache-busting parameter
+      const cacheBuster = `?t=${Date.now()}`;
+      
+      const response = await fetch(`${latestImageEndpoint}${cacheBuster}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
         },
+        cache: 'no-store',
       });
 
       if (response.ok) {
@@ -76,7 +83,7 @@ const UnifiedApp = () => {
         isLoading={isLoading}
         handleSubmit={handleSubmit}
         saveConversation={saveConversation}
-        clearConversation={clearConversation} // Add the new clearConversation prop
+        clearConversation={clearConversation}
         useScreenshots={useScreenshots}
         setUseScreenshots={setUseScreenshots}
         setIsOptionsOpen={setIsOptionsOpen}
@@ -114,7 +121,7 @@ const UnifiedApp = () => {
           isLoading={isLoading}
           handleSubmit={handleSubmit}
           saveConversation={saveConversation}
-          clearConversation={clearConversation} // Add the new clearConversation prop
+          clearConversation={clearConversation}
           useScreenshots={useScreenshots}
           setUseScreenshots={setUseScreenshots}
           setIsOptionsOpen={setIsOptionsOpen}

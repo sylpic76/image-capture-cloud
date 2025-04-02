@@ -68,13 +68,17 @@ export const useScreenCapture = (intervalSeconds = 5) => {
 
       const formData = new FormData();
       formData.append('screenshot', blob, 'screenshot.png');
+      
+      const timestamp = Date.now();
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-screenshot`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/capture-screenshot?t=${timestamp}`, {
         method: 'POST',
         body: formData,
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'X-Priority': 'high',
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
         },
       });
 
@@ -85,10 +89,12 @@ export const useScreenCapture = (intervalSeconds = 5) => {
       const result = await response.json();
       setLastCaptureUrl(result.url);
       
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-screenshots`, {
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-screenshots?t=${timestamp}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
         },
       });
       

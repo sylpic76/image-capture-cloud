@@ -89,10 +89,16 @@ export const fetchLatestScreenshot = async (
     console.log("Attempting to fetch latest screenshot...");
     setImageProcessingStatus('processing');
     
-    const response = await fetch('https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest', {
+    // Add cache buster to prevent browser caching
+    const cacheBuster = Date.now();
+    
+    const response = await fetch(`https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest?t=${cacheBuster}`, {
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Cache-Control': 'no-cache, no-store',
+        'Pragma': 'no-cache',
       },
+      cache: 'no-store'
     });
 
     if (response.ok) {

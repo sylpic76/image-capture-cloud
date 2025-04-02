@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&order=created_at.desc&limit=1`;
 
-// CORS headers - allowing access from any origin
+// CORS headers - allowing access from any origin with strong no-cache directives
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma",
@@ -80,7 +80,7 @@ serve(async (req) => {
     // Add cache buster to image URL
     const imageUrlWithCacheBuster = `${imageUrl}?t=${cacheBuster}`;
     
-    // Fetch the actual image - Now using authentication headers and no-cache
+    // Fetch the actual image with aggressive cache prevention
     const imageRes = await fetch(imageUrlWithCacheBuster, {
       headers: {
         apikey: SUPABASE_ANON_KEY,

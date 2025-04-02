@@ -1,3 +1,4 @@
+
 // Import the necessary modules for Deno
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
@@ -13,6 +14,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Cache-Control": "no-cache, no-store, must-revalidate",
+  "Pragma": "no-cache",
+  "Expires": "0"
 };
 
 serve(async (req: Request) => {
