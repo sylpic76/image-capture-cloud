@@ -100,8 +100,8 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
       logDebug(`Stopping track: ${track.kind}, enabled: ${track.enabled}, muted: ${track.muted}`);
       
       // Vérifier si la piste est déjà arrêtée
-      // Fix: Use the correct enum value for MediaStreamTrack.readyState
-      if (track.readyState === "ended") {
+      // Fix: Use the proper MediaStreamTrack.readyState enum value
+      if (track.readyState !== "live") {
         logDebug(`Track ${track.id} already ended, skipping`);
         return;
       }
@@ -115,7 +115,7 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
       track.stop();
       
       // Vérifier si elle a été correctement arrêtée
-      if (track.readyState !== "ended") {
+      if (track.readyState === "live") {
         logError(`Failed to stop track ${track.id}, readyState: ${track.readyState}`, null);
       }
     } catch (e) {
