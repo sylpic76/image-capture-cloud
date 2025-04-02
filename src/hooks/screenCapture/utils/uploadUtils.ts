@@ -1,7 +1,6 @@
 
 import { toast } from 'sonner';
 import { createLogger } from '../logger';
-import { supabase } from "@/integrations/supabase/client"; 
 
 const { logDebug, logError } = createLogger();
 
@@ -20,14 +19,13 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
     
     logDebug(`Preparing request to ${endpoint}`);
     
-    // Set up request with only the apikey header, no JWT auth
+    console.log(`[uploadScreenshot] 📤 Capture #${captureId}, envoi vers ${endpoint}`);
+
     const response = await fetch(endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': blob.type,
-        'apikey': SUPABASE_ANON_KEY,
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
+        "Content-Type": blob.type,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: blob,
       // Add timeout to prevent hanging requests
@@ -36,16 +34,24 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
     
     logDebug(`Got response: status=${response.status}, statusText=${response.statusText}`);
 
+    // ❌ Si le backend renvoie une erreur HTTP
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[uploadScreenshot] ❌ HTTP ${response.status} : ${errorText}`);
       logError(`HTTP Error ${response.status}: ${errorText}`, new Error(errorText));
-      throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     try {
-      const result = await response.json();
-      logDebug(`Upload successful: ${result.url}`);
-      return result.url || '';
+      // ✅ Analyse la réponse JSON
+      const json = await response.json();
+      if (!json.url) {
+        throw new Error(`Réponse Supabase invalide : ${JSON.stringify(json)}`);
+      }
+
+      console.log(`[uploadScreenshot] ✅ Upload réussi : ${json.url}`);
+      logDebug(`Upload successful: ${json.url}`);
+      return json.url;
     } catch (jsonError) {
       // Handle case where response is not valid JSON
       logError("Failed to parse response as JSON", jsonError);
@@ -54,7 +60,7 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
   } catch (err: any) {
     // Comprehensive error logging
     logError(`Upload error for capture #${captureId}`, err);
-    console.error('[uploadScreenshot] ❌ Upload error:', err);
+    console.error('[uploadScreenshot] ❌ Erreur réseau ou JSON:', err);
     
     // Enhanced error message for network errors
     const errorMessage = err.message || String(err);
