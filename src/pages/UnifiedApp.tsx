@@ -12,7 +12,7 @@ const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
   // Screen capture functionality - changed from 10 to 5 seconds
-  const { status, countdown, toggleCapture } = useScreenCapture(5);
+  const { status, countdown, toggleCapture, getDiagnostics } = useScreenCapture(5);
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -94,6 +94,7 @@ const UnifiedApp = () => {
         isImageLoading={isImageLoading}
         fetchLatestScreenshot={fetchLatestScreenshot}
         imageProcessingStatus={imageProcessingStatus}
+        getDiagnostics={getDiagnostics}
       />
     );
   }
@@ -111,6 +112,7 @@ const UnifiedApp = () => {
           status={status}
           countdown={countdown}
           toggleCapture={toggleCapture}
+          getDiagnostics={getDiagnostics}
         />
         
         {/* Right column - Assistant IA (2/3 width) */}
