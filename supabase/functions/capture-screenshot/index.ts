@@ -12,8 +12,17 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Generate a unique request ID for tracking
+  const requestId = crypto.randomUUID().slice(0, 8)
+  console.log(`[${requestId}] Starting screenshot upload request`)
+  
+  // Log request details
+  console.log(`[${requestId}] Request method: ${req.method}`)
+  console.log(`[${requestId}] Request headers:`, Object.fromEntries([...req.headers.entries()]))
+
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
+    console.log(`[${requestId}] Handling OPTIONS preflight request with enhanced CORS`)
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
@@ -24,7 +33,7 @@ serve(async (req) => {
   const apiKey = req.headers.get('apikey')
   
   if (!apiKey) {
-    console.error("Missing required API key")
+    console.error(`[${requestId}] Missing required API key`)
     return new Response(
       JSON.stringify({ error: "Missing API key" }),
       {
@@ -41,18 +50,27 @@ serve(async (req) => {
     // Parse the request to get the screenshot data
     const base64Image = await req.arrayBuffer()
     const buffer = new Uint8Array(base64Image)
+    console.log(`[${requestId}] Received image data: ${buffer.length} bytes, content-type: ${req.headers.get('Content-Type') || 'image/png'}`)
     
     // Generate a unique name for the screenshot
     const timestamp = new Date().toISOString().replace(/[:\.]/g, '').substring(0, 15)
     const filename = `screen_${timestamp}.png`
+    console.log(`[${requestId}] Generated filename: ${filename}`)
     
     // Initialize Supabase client with environment variables
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error(`[${requestId}] Missing Supabase environment variables: URL=${!!supabaseUrl}, SERVICE_KEY=${!!supabaseServiceKey}`)
+      throw new Error("Server configuration error: Missing environment variables")
+    }
+    
+    console.log(`[${requestId}] Initializing Supabase client with URL: ${supabaseUrl}`)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
     
     // Store the image in the screenshots bucket
+    console.log(`[${requestId}] Uploading image to 'screenshots' bucket`)
     const { data: uploadData, error: uploadError } = await supabaseAdmin
       .storage
       .from('screenshots')
@@ -62,24 +80,29 @@ serve(async (req) => {
       })
     
     if (uploadError) {
-      console.error('Upload error:', uploadError)
-      throw new Error(`Storage error: ${uploadError.message}`)
+      console.error(`[${requestId}] Upload error details:`, uploadError)
+      throw new Error(`Storage upload error: ${uploadError.message || JSON.stringify(uploadError)}`)
     }
+    
+    console.log(`[${requestId}] Upload successful:`, uploadData)
 
     // Create a signed URL for the uploaded file with 24-hour expiration
+    console.log(`[${requestId}] Creating signed URL for ${filename}`)
     const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin
       .storage
       .from('screenshots')
       .createSignedUrl(filename, 60 * 60 * 24) // 24 hours expiry
     
     if (signedUrlError) {
-      console.error('Signed URL error:', signedUrlError)
-      throw new Error(`Signed URL error: ${signedUrlError.message}`)
+      console.error(`[${requestId}] Signed URL error details:`, signedUrlError)
+      throw new Error(`Signed URL error: ${signedUrlError.message || JSON.stringify(signedUrlError)}`)
     }
     
     const imageUrl = signedUrlData.signedUrl
+    console.log(`[${requestId}] Signed URL created successfully: ${imageUrl.substring(0, 100)}...`)
     
     // Log the screenshot in the database
+    console.log(`[${requestId}] Logging screenshot in database`)
     const { data: logData, error: logError } = await supabaseAdmin
       .from('screenshot_log')
       .insert([
@@ -92,11 +115,14 @@ serve(async (req) => {
       .select()
     
     if (logError) {
-      console.error('Database log error:', logError)
-      throw new Error(`Database error: ${logError.message}`)
+      console.error(`[${requestId}] Database log error details:`, logError)
+      throw new Error(`Database error: ${logError.message || JSON.stringify(logError)}`)
     }
+    
+    console.log(`[${requestId}] Database log successful:`, logData)
 
     // Return the signed image URL
+    console.log(`[${requestId}] Request completed successfully`)
     return new Response(
       JSON.stringify({ url: imageUrl }),
       {
@@ -108,9 +134,17 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error processing screenshot:', error)
+    // Enhanced error logging
+    console.error(`[${requestId}] Error processing screenshot:`, error)
+    console.error(`[${requestId}] Error stack trace:`, error.stack)
+    
+    // Return detailed error information
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || "Unknown error occurred",
+        details: String(error),
+        timestamp: new Date().toISOString()
+      }),
       {
         status: 500,
         headers: {

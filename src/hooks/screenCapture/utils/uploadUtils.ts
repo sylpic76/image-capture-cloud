@@ -18,6 +18,8 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
     // Get the anon key directly from environment variables
     const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
+    logDebug(`Preparing request to ${endpoint}`);
+    
     // Set up request with only the apikey header, no JWT auth
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -31,6 +33,8 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
       // Add timeout to prevent hanging requests
       signal: AbortSignal.timeout(30000) // 30 second timeout
     });
+    
+    logDebug(`Got response: status=${response.status}, statusText=${response.statusText}`);
 
     if (!response.ok) {
       const errorText = await response.text();
