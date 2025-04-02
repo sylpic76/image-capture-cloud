@@ -8,20 +8,21 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/screenshot_log?select=image_url&order=created_at.desc&limit=1`;
 
-// CORS headers - allowing access from ANY origin with strong no-cache directives
+// Renforcé les headers CORS pour permettre toutes les origines et méthodes
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma, x-requested-with",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Max-Age": "86400",
   "Cache-Control": "no-cache, no-store, must-revalidate",
   "Pragma": "no-cache",
   "Expires": "0"
 };
 
 serve(async (req: Request) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight requests avec des réponses plus complètes
   if (req.method === "OPTIONS") {
-    console.log("Handling OPTIONS preflight request");
+    console.log("Handling OPTIONS preflight request with enhanced CORS");
     return new Response(null, {
       status: 204,
       headers: corsHeaders
