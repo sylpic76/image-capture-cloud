@@ -5,8 +5,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
 const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
-// API URLs for Gemini AI - Mise à jour pour utiliser v1beta avec le modèle gemini-1.0-pro
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent";
+// API URLs for Gemini AI - Mise à jour pour utiliser v1beta avec le modèle gemini-1.5-pro pour le support des images
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -39,32 +39,48 @@ serve(async (req) => {
     Ton objectif est d'aider l'utilisateur à améliorer son code et ses compétences techniques.`;
     
     // If screenshot was provided, include a notification but don't send the actual image
-    // Since we don't have image processing support currently
     let imageProcessed = false;
     let userMessage = message;
     
-    if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, but will not be sent as image processing isn't currently implemented");
-      imageProcessed = true;
-    }
-
     console.log("Sending request to Gemini API...");
     console.log(`API URL: ${GEMINI_API_URL}`);
     
-    // Format de requête mis à jour pour v1beta
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            { text: systemInstruction }
-          ]
-        },
-        {
-          parts: [
-            { text: userMessage }
-          ]
+    // Préparer les parties du message
+    const contents = [];
+    
+    // Ajouter l'instruction système comme première partie
+    contents.push({
+      parts: [{ text: systemInstruction }]
+    });
+    
+    // Préparer les parties du message utilisateur
+    const userParts = [];
+    
+    // 1. Ajouter le texte du message
+    userParts.push({ text: userMessage });
+    
+    // 2. Ajouter l'image si elle est fournie
+    if (screenshot && screenshot.length > 0) {
+      console.log("Screenshot detected, processing image for Gemini Vision API");
+      imageProcessed = true;
+      
+      // Ajouter l'image encodée en base64 au message
+      userParts.push({
+        inlineData: {
+          data: screenshot.replace(/^data:image\/(png|jpeg|jpg);base64,/, ''), // Enlever le préfixe data:image si présent
+          mimeType: screenshot.startsWith('data:image/png') ? "image/png" : "image/jpeg"
         }
-      ],
+      });
+    }
+    
+    // Ajouter les parties utilisateur au contenu
+    contents.push({
+      parts: userParts
+    });
+    
+    // Format de requête pour l'API Gemini v1beta avec support d'image
+    const requestBody = {
+      contents: contents,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2000,
@@ -109,7 +125,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         response: assistantResponse,
-        model: "gemini-1.0-pro",
+        model: "gemini-1.5-pro",
         image_processed: imageProcessed
       }),
       { 
