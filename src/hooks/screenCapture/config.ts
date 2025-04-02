@@ -1,12 +1,12 @@
 
 import { ScreenCaptureConfig } from './types';
 
-// Configuration pour limiter l'accès aux API sensibles
+// Configuration standard sans limitations restrictives
 export const defaultConfig: ScreenCaptureConfig = {
-  disableAdvancedSDK: true, // Désactive par défaut les fonctionnalités avancées des SDK
-  requestFrameRate: 1, // Limite le taux de rafraîchissement (1 = très lent)
-  enforceBasicMode: true, // Force le mode basique de capture
-  useLowResolution: true, // Utilise une résolution plus basse
+  disableAdvancedSDK: false, // Permettre les fonctionnalités avancées
+  requestFrameRate: 30,      // Utiliser un taux de rafraîchissement normal
+  enforceBasicMode: false,   // Ne pas forcer le mode basique
+  useLowResolution: false,   // Utiliser une résolution normale
 };
 
 export const lockConfiguration = (config: Partial<ScreenCaptureConfig> = {}): ScreenCaptureConfig => {
@@ -14,10 +14,8 @@ export const lockConfiguration = (config: Partial<ScreenCaptureConfig> = {}): Sc
   const mergedConfig = {
     ...defaultConfig,
     ...config,
-    // Toujours forcer disableAdvancedSDK à true pour des raisons de sécurité
-    disableAdvancedSDK: true,
   };
   
-  // Verrouiller la configuration pour qu'elle ne puisse pas être modifiée
-  return Object.freeze(mergedConfig);
+  // Ne pas verrouiller la configuration pour permettre des modifications dynamiques
+  return mergedConfig;
 };

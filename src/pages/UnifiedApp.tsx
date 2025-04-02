@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
@@ -8,19 +7,11 @@ import ScreenCaptureSection from "@/components/UnifiedApp/ScreenCaptureSection";
 import AssistantSection from "@/components/UnifiedApp/AssistantSection";
 import MobileTabView from "@/components/UnifiedApp/MobileTabView";
 
-// Configuration restrictive pour la capture d'écran
-const captureConfig = {
-  disableAdvancedSDK: true,
-  requestFrameRate: 1,
-  enforceBasicMode: true,
-  useLowResolution: true,
-};
-
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
-  // Screen capture functionality - avec configuration sécurisée
-  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5, captureConfig);
+  // Screen capture functionality - sans configuration restrictive
+  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5);
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -37,7 +28,6 @@ const UnifiedApp = () => {
     imageProcessingStatus
   } = useAssistantMessages(useScreenshots);
   
-  // Latest screenshot state for mobile view
   const [latestScreenshot, setLatestScreenshot] = useState<string | null>(null);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [isImageLoading, setIsImageLoading] = useState(false);
@@ -46,7 +36,6 @@ const UnifiedApp = () => {
   const latestImageEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
   const screenshotsApiEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
   
-  // Fetch latest screenshot for mobile view
   const fetchLatestScreenshot = async () => {
     try {
       setIsImageLoading(true);
@@ -78,7 +67,6 @@ const UnifiedApp = () => {
     }
   };
   
-  // Mobile layout with tabs
   if (isMobile) {
     return (
       <MobileTabView 
@@ -108,7 +96,6 @@ const UnifiedApp = () => {
     );
   }
   
-  // Desktop layout with 2-column grid - 1/3 - 2/3 distribution
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent pb-1">
