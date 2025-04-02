@@ -92,8 +92,11 @@ export const fetchLatestScreenshot = async (
     // Add cache buster to prevent browser caching
     const cacheBuster = Date.now();
     
-    // Utilisez l'URL correcte pour le endpoint latest avec un param de cache busting
-    const response = await fetch(`https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest?t=${cacheBuster}`, {
+    // Use the updated URL to the latest screenshot in storage
+    const latestImageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
+    
+    // Fetch the latest screenshot with cache busting param
+    const response = await fetch(`${latestImageUrl}?t=${cacheBuster}`, {
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store',

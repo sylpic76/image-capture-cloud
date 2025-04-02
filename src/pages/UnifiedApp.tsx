@@ -34,9 +34,9 @@ const UnifiedApp = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [isImageLoading, setIsImageLoading] = useState(false);
   
-  // API Endpoint URLs
-  const latestImageEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
-  const screenshotsApiEndpoint = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
+  // Updated API Endpoint URLs
+  const latestImageEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
+  const screenshotsApiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10`;
   
   const fetchLatestScreenshot = async () => {
     try {

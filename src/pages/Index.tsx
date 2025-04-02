@@ -17,11 +17,11 @@ const Index = () => {
   const [screenshots, setScreenshots] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Supabase REST API link
-  const supabaseLink = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
+  // Updated Supabase REST API link
+  const supabaseLink = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10`;
   
-  // Direct latest screenshot link
-  const latestImageLink = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
+  // Updated direct latest screenshot link
+  const latestImageLink = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/screenshots/latest.png`;
 
   // Fetch screenshots from Supabase
   useEffect(() => {
