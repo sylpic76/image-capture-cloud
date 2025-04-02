@@ -101,25 +101,9 @@ serve(async (req) => {
     const imageUrl = signedUrlData.signedUrl
     console.log(`[${requestId}] Signed URL created successfully: ${imageUrl.substring(0, 100)}...`)
     
-    // COMMENTED OUT: Database insert operation that was causing the issue
-    // console.log(`[${requestId}] Logging screenshot in database`)
-    // const { data: logData, error: logError } = await supabaseAdmin
-    //   .from('screenshot_log')
-    //   .insert([
-    //     { 
-    //       image_url: imageUrl,
-    //       file_name: filename,
-    //       file_size: buffer.length,
-    //     },
-    //   ])
-    //   .select()
-    // 
-    // if (logError) {
-    //   console.error(`[${requestId}] Database log error details:`, logError)
-    //   throw new Error(`Database error: ${logError.message || JSON.stringify(logError)}`)
-    // }
-    // 
-    // console.log(`[${requestId}] Database log successful:`, logData)
+    // IMPORTANT: The database insertion has been completely removed
+    // This is because it was causing 500 errors
+    // We're now only using storage for the screenshots without recording in the database
 
     // Return the signed image URL
     console.log(`[${requestId}] Request completed successfully`)
