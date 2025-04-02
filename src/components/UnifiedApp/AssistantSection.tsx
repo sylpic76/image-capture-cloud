@@ -17,6 +17,8 @@ interface AssistantSectionProps {
   setUseScreenshots: (use: boolean) => void;
   setIsOptionsOpen: (isOpen: boolean) => void;
   imageProcessingStatus?: 'idle' | 'processing' | 'success' | 'error';
+  currentProject?: string;
+  setCurrentProject?: (project: string) => void;
 }
 
 const AssistantSection = ({
@@ -31,6 +33,8 @@ const AssistantSection = ({
   setUseScreenshots,
   setIsOptionsOpen,
   imageProcessingStatus = 'idle',
+  currentProject,
+  setCurrentProject
 }: AssistantSectionProps) => {
   return (
     <div className="lg:col-span-8">
@@ -41,6 +45,8 @@ const AssistantSection = ({
           clearConversation={clearConversation}
           useScreenshots={useScreenshots}
           setUseScreenshots={setUseScreenshots}
+          currentProject={currentProject}
+          setCurrentProject={setCurrentProject}
         />
         
         <CardContent className="flex-grow pb-0 overflow-hidden">

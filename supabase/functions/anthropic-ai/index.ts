@@ -1,4 +1,3 @@
-
 // Import necessary modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
@@ -14,10 +13,158 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Create a Supabase client (for logging purposes if needed)
+// Create a Supabase client
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Fonction pour gérer les projets (créer ou récupérer)
+async function getOrCreateProject(projectName = "Default Project") {
+  try {
+    // Check if project exists
+    const { data: existingProject, error: fetchError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('name', projectName)
+      .single();
+    
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error("Error fetching project:", fetchError);
+      return null;
+    }
+    
+    // If project exists, return it
+    if (existingProject) {
+      console.log(`Project found: ${existingProject.id} - ${existingProject.name}`);
+      return existingProject;
+    }
+    
+    // Otherwise, create new project
+    const { data: newProject, error: insertError } = await supabase
+      .from('projects')
+      .insert([{ name: projectName, description: `Project created automatically on ${new Date().toISOString()}` }])
+      .select('*')
+      .single();
+    
+    if (insertError) {
+      console.error("Error creating project:", insertError);
+      return null;
+    }
+    
+    console.log(`New project created: ${newProject.id} - ${newProject.name}`);
+    return newProject;
+  } catch (error) {
+    console.error("Error in getOrCreateProject:", error);
+    return null;
+  }
+}
+
+// Fonction pour récupérer le profil utilisateur (ou en créer un par défaut)
+async function getUserProfile() {
+  try {
+    const { data: profiles, error: fetchError } = await supabase
+      .from('user_profile')
+      .select('*')
+      .limit(1);
+    
+    if (fetchError) {
+      console.error("Error fetching user profile:", fetchError);
+      return null;
+    }
+    
+    if (profiles && profiles.length > 0) {
+      return profiles[0];
+    }
+    
+    // Create default profile if none exists
+    const { data: newProfile, error: insertError } = await supabase
+      .from('user_profile')
+      .insert([{
+        name: "Default User",
+        tech_level: "intermédiaire",
+        stack: ["React", "Typescript", "Supabase"]
+      }])
+      .select('*')
+      .single();
+    
+    if (insertError) {
+      console.error("Error creating user profile:", insertError);
+      return null;
+    }
+    
+    return newProfile;
+  } catch (error) {
+    console.error("Error in getUserProfile:", error);
+    return null;
+  }
+}
+
+// Fonction pour sauvegarder un message dans la mémoire du projet
+async function saveToMemory(projectId, role, content) {
+  try {
+    const { error } = await supabase
+      .from('assistant_memory')
+      .insert([{
+        project_id: projectId,
+        role: role,
+        content: content
+      }]);
+    
+    if (error) {
+      console.error("Error saving to memory:", error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error in saveToMemory:", error);
+    return false;
+  }
+}
+
+// Fonction pour récupérer les derniers messages de la mémoire
+async function getMemoryContext(projectId, limit = 30) {
+  try {
+    const { data, error } = await supabase
+      .from('assistant_memory')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error("Error fetching memory:", error);
+      return [];
+    }
+    
+    return data.reverse(); // Return in chronological order
+  } catch (error) {
+    console.error("Error in getMemoryContext:", error);
+    return [];
+  }
+}
+
+// Fonction pour sauvegarder une capture d'écran dans les snapshots
+async function saveScreenshot(projectId, imageUrl) {
+  try {
+    const { error } = await supabase
+      .from('snapshots')
+      .insert([{
+        project_id: projectId,
+        image_url: imageUrl
+      }]);
+    
+    if (error) {
+      console.error("Error saving screenshot:", error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error in saveScreenshot:", error);
+    return false;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -30,7 +177,43 @@ serve(async (req) => {
 
   try {
     // Parse the request body
-    const { message, screenshot } = await req.json();
+    const { message, screenshot, projectName } = await req.json();
+    
+    // Get or create the project
+    const project = await getOrCreateProject(projectName || "Default Project");
+    if (!project) {
+      throw new Error("Failed to get or create project");
+    }
+    
+    // Get user profile
+    const userProfile = await getUserProfile();
+    
+    // Get memory context
+    const memoryContext = await getMemoryContext(project.id);
+    
+    // Format memory context for the prompt
+    let memoryContextText = "";
+    if (memoryContext.length > 0) {
+      memoryContextText = "\n\n## 📜 CONTEXTE DE LA CONVERSATION\n\n";
+      memoryContext.forEach(entry => {
+        memoryContextText += `${entry.role === 'user' ? '👤' : '🤖'} ${entry.content.substring(0, 200)}${entry.content.length > 200 ? '...' : ''}\n\n`;
+      });
+    }
+    
+    // Save user message to memory
+    await saveToMemory(project.id, 'user', message);
+    
+    // Process screenshot if provided
+    let imageProcessed = false;
+    let userMessage = message;
+    
+    if (screenshot && screenshot.length > 0) {
+      console.log("Screenshot detected, processing image for Gemini Vision API");
+      imageProcessed = true;
+      
+      // Save screenshot to snapshots
+      await saveScreenshot(project.id, "data:image/jpeg;base64," + screenshot);
+    }
     
     // Nouveau prompt expert avec mémoire Supabase
     const systemPrompt = `Tu es un assistant IA intelligent et structuré avec une mémoire complète via Supabase. Tu assistes ton utilisateur dans le développement de projets digitaux, et tu construis une mémoire exploitable, intelligente et durable.
@@ -149,11 +332,13 @@ Ton style :
 
 🔄 Mise à jour : "FlutterFlow a ajouté une nouvelle fonction hier : [Feature]. Voici comment l'utiliser..."
 
-IMPORTANT : Analyse TOUJOURS attentivement la capture d'écran fournie avant de répondre.`;
-    
-    // If screenshot was provided, include a notification but don't send the actual image
-    let imageProcessed = false;
-    let userMessage = message;
+IMPORTANT : Analyse TOUJOURS attentivement la capture d'écran fournie avant de répondre.
+
+${userProfile ? `\n## 👤 PROFIL UTILISATEUR\nNom: ${userProfile.name}\nNiveau technique: ${userProfile.tech_level || 'Non spécifié'}\nStack: ${userProfile.stack ? userProfile.stack.join(', ') : 'Non spécifiée'}\n` : ''}
+
+${project ? `\n## 🗂️ PROJET ACTUEL\nNom: ${project.name}\nID: ${project.id}\n` : ''}
+
+${memoryContextText}`;
     
     console.log("Sending request to Gemini API...");
     console.log(`API URL: ${GEMINI_API_URL}`);
@@ -177,9 +362,6 @@ IMPORTANT : Analyse TOUJOURS attentivement la capture d'écran fournie avant de 
     
     // Ajouter l'image si elle est fournie
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, processing image for Gemini Vision API");
-      imageProcessed = true;
-      
       // Modifier la requête pour inclure l'image
       requestBody.contents[0].parts.push({
         inlineData: {
@@ -223,6 +405,9 @@ IMPORTANT : Analyse TOUJOURS attentivement la capture d'écran fournie avant de 
 
     // Extract and return the assistant's response - Format corrigé pour la version v1beta
     const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Problème avec la réponse de l'API.";
+
+    // Save assistant response to memory
+    await saveToMemory(project.id, 'assistant', assistantResponse);
 
     return new Response(
       JSON.stringify({ 

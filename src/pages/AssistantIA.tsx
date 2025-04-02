@@ -20,7 +20,9 @@ const AssistantIA = () => {
     handleSubmit,
     saveConversation,
     clearConversation,
-    imageProcessingStatus
+    imageProcessingStatus,
+    currentProject,
+    setCurrentProject
   } = useAssistantMessages(useScreenshots);
 
   // Fetch the latest screenshot
@@ -60,6 +62,8 @@ const AssistantIA = () => {
           clearConversation={clearConversation}
           useScreenshots={useScreenshots}
           setUseScreenshots={setUseScreenshots}
+          currentProject={currentProject}
+          setCurrentProject={setCurrentProject}
         />
 
         <CardContent className="flex-grow pb-0 overflow-hidden">

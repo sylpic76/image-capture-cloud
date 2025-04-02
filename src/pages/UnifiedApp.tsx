@@ -27,7 +27,9 @@ const UnifiedApp = () => {
     handleSubmit,
     saveConversation,
     clearConversation,
-    imageProcessingStatus
+    imageProcessingStatus,
+    currentProject,
+    setCurrentProject
   } = useAssistantMessages(useScreenshots);
   
   const [latestScreenshot, setLatestScreenshot] = useState<string | null>(null);
@@ -124,6 +126,8 @@ const UnifiedApp = () => {
         imageProcessingStatus={imageProcessingStatus}
         getDiagnostics={getDiagnostics}
         sdkDisabled={sdkDisabled}
+        currentProject={currentProject}
+        setCurrentProject={setCurrentProject}
       />
     );
   }
@@ -157,6 +161,8 @@ const UnifiedApp = () => {
           setUseScreenshots={setUseScreenshots}
           setIsOptionsOpen={setIsOptionsOpen}
           imageProcessingStatus={imageProcessingStatus}
+          currentProject={currentProject}
+          setCurrentProject={setCurrentProject}
         />
       </div>
       

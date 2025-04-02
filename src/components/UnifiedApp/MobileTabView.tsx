@@ -31,6 +31,8 @@ interface MobileTabViewProps {
   imageProcessingStatus?: 'idle' | 'processing' | 'success' | 'error';
   getDiagnostics?: () => any;
   sdkDisabled?: boolean;
+  currentProject?: string;
+  setCurrentProject?: (project: string) => void;
 }
 
 const MobileTabView = ({
@@ -56,6 +58,8 @@ const MobileTabView = ({
   imageProcessingStatus = 'idle',
   getDiagnostics,
   sdkDisabled = true,
+  currentProject,
+  setCurrentProject
 }: MobileTabViewProps) => {
   return (
     <div className="container mx-auto px-4 py-6">
@@ -116,6 +120,8 @@ const MobileTabView = ({
               clearConversation={clearConversation}
               useScreenshots={useScreenshots}
               setUseScreenshots={setUseScreenshots}
+              currentProject={currentProject}
+              setCurrentProject={setCurrentProject}
             />
             
             <CardContent className="flex-grow pb-0 overflow-hidden">
