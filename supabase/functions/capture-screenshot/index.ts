@@ -102,6 +102,7 @@ serve(async (req) => {
     console.log(`[${requestId}] Signed URL created successfully: ${imageUrl.substring(0, 100)}...`)
     
     // Log the screenshot in the database
+    // Note: We're using explicit column names to avoid schema cache issues
     console.log(`[${requestId}] Logging screenshot in database`)
     const { data: logData, error: logError } = await supabaseAdmin
       .from('screenshot_log')
