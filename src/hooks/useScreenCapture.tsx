@@ -95,7 +95,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       // Stocker le stream dans la ref et non dans l'état pour éviter des re-renders
       mediaStreamRef.current = stream;
       setStatus('active');
-      toast.success("Capture d'écran activée. L'application peut maintenant capturer votre écran.");
+      // Removed toast notification here
       return true;
     } catch (error) {
       logError("Permission request failed", error);
