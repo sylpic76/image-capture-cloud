@@ -5,8 +5,8 @@ import { ScreenCaptureConfig } from './types';
 export const defaultConfig: ScreenCaptureConfig = {
   disableAdvancedSDK: false, // Activer les fonctionnalités avancées
   requestFrameRate: 60,      // Utiliser un taux de rafraîchissement très élevé
-  enforceBasicMode: false,   // Ne pas forcer le mode basique
   useLowResolution: false,   // Utiliser une résolution normale
+  captureWithAudio: false,   // Ne pas capturer l'audio par défaut
 };
 
 // Configuration simple sans verrouillage
