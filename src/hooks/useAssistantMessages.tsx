@@ -45,16 +45,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
         // Send message to Gemini AI
         const responseData = await sendMessageToAI(input.trim(), screenshotBase64);
         
-        // Add feedback if image was processed
-        let responseMessage = responseData.response || "Problème avec la réponse de l'API.";
-        if (screenshotBase64 && responseData.image_processed) {
-          responseMessage = `📷 _J'ai reçu votre capture d'écran, mais je ne peux pas l'analyser actuellement._ \n\n${responseMessage}`;
-        }
-        
+        // Add assistant response without any additional message about the image
         const assistantMessage: Message = {
           id: Date.now().toString(),
           role: 'assistant',
-          content: responseMessage,
+          content: responseData.response || "Problème avec la réponse de l'API.",
           timestamp: new Date(),
         };
         
