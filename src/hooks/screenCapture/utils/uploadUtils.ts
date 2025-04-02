@@ -25,7 +25,7 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
       method: "POST",
       headers: {
         "Content-Type": blob.type,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, // Correct authorization header format
       },
       body: blob,
       // Add timeout to prevent hanging requests

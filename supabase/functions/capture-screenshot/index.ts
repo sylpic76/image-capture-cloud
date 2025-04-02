@@ -30,7 +30,7 @@ serve(async (req) => {
   }
   
   // Get the API key from the header
-  const apiKey = req.headers.get('apikey')
+  const apiKey = req.headers.get('apikey') || req.headers.get('authorization')?.split(' ')[1]
   
   if (!apiKey) {
     console.error(`[${requestId}] Missing required API key`)
