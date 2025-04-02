@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
@@ -11,7 +12,7 @@ const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
   // Screen capture functionality - sans configuration restrictive
-  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5);
+  const { status, countdown, toggleCapture, startCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5);
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -66,6 +67,18 @@ const UnifiedApp = () => {
       setIsImageLoading(false);
     }
   };
+
+  // Automatically start capture when component mounts
+  useEffect(() => {
+    const initCapture = async () => {
+      console.log("Initializing screen capture automatically");
+      await startCapture();
+    };
+    
+    initCapture();
+    
+    // Cleanup on unmount is handled within useScreenCapture
+  }, [startCapture]); 
   
   if (isMobile) {
     return (

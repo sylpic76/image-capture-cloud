@@ -70,7 +70,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       
       if (mountedRef.current) {
         setStatus('active');
-        // Removed toast notification here
+        // Success toast is removed as requested
       }
       
       return true;
@@ -112,10 +112,15 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     logDebug(`Toggle capture called, current status: ${status}`);
     
     if (status === 'idle' || status === 'error') {
+      logDebug("Attempting to start capture from idle/error state");
       const permissionGranted = await requestPermission();
       if (permissionGranted && mountedRef.current) {
         logDebug("Permission granted, setting countdown");
         setCountdown(intervalSeconds);
+        // Explicitly log the success here
+        logDebug("Capture activated successfully");
+      } else {
+        logDebug("Permission denied or component unmounted");
       }
     } else if (status === 'active') {
       logDebug("Pausing capture");
@@ -126,6 +131,22 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       setStatus('active');
       setCountdown(intervalSeconds);
       toast.success("Capture d'écran reprise");
+    } else {
+      logDebug(`No action for status: ${status}`);
+    }
+  }, [status, requestPermission, intervalSeconds, logDebug]);
+
+  // Force start capture - adding this as a simpler alternative
+  const startCapture = useCallback(async () => {
+    logDebug("Force starting capture");
+    if (status !== 'active') {
+      const permissionGranted = await requestPermission();
+      if (permissionGranted && mountedRef.current) {
+        setCountdown(intervalSeconds);
+        logDebug("Force start: Capture activated successfully");
+      }
+    } else {
+      logDebug("Capture already active, ignoring start request");
     }
   }, [status, requestPermission, intervalSeconds, logDebug]);
 
@@ -244,6 +265,7 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
     status,
     countdown,
     toggleCapture,
+    startCapture, // Adding this direct method
     stopCapture,
     captureScreen: handleCaptureScreen,
     lastCaptureUrl,

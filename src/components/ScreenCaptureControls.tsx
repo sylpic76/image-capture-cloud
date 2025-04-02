@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,11 @@ const ScreenCaptureControls = ({
   getDiagnostics,
   sdkDisabled = true
 }: ScreenCaptureControlsProps) => {
+  // Log status changes to help with debugging
+  useEffect(() => {
+    console.log("ScreenCaptureControls: status changed to", status);
+  }, [status]);
+
   const renderStatus = () => {
     switch (status) {
       case 'idle':
@@ -34,7 +39,7 @@ const ScreenCaptureControls = ({
       case 'error':
         return <Badge variant="destructive">Erreur</Badge>;
       default:
-        return <Badge variant="outline">État inconnu</Badge>;
+        return <Badge variant="outline">État inconnu: {status}</Badge>;
     }
   };
 
@@ -108,7 +113,9 @@ const ScreenCaptureControls = ({
                   ? "La capture d'écran est actuellement en pause" 
                   : status === 'error'
                     ? "Une erreur s'est produite lors de la capture d'écran"
-                    : "Cliquez sur le bouton pour autoriser la capture d'écran"}
+                    : status === 'requesting-permission'
+                      ? "Veuillez autoriser la capture d'écran dans la boîte de dialogue"
+                      : "Cliquez sur le bouton pour autoriser la capture d'écran"}
               </p>
             )}
           </div>
