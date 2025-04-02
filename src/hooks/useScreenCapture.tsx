@@ -28,14 +28,16 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
   
   // Use the timer hook for countdown logic
   const { countdown, setCountdown } = useTimer(intervalSeconds, status, async () => {
-    if (status === 'active') {
+    if (status === 'active' && isMountedRef.current) {
       await handleCaptureScreen();
     }
   });
   
   // Clean up on unmount
   useEffect(() => {
+    logDebug("Setting up useScreenCapture with cleanup");
     return () => {
+      logDebug("Unmounting useScreenCapture, cleaning up");
       isMountedRef.current = false;
     };
   }, []);

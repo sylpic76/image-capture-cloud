@@ -25,14 +25,17 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
       ? `Bearer ${accessToken}` 
       : `Bearer ${SUPABASE_ANON_KEY}`;
     
+    logDebug(`Using auth header: ${accessToken ? 'JWT token' : 'Anon key'}`);
+    
     // Set up request with proper Authorization header
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': blob.type,
         'Authorization': authHeader,
-        'Cache-Control': 'no-cache',
         'apikey': SUPABASE_ANON_KEY, // Add the apikey header which is also needed
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
       },
       body: blob,
       // Add timeout to prevent hanging requests
@@ -41,6 +44,7 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
 
     if (!response.ok) {
       const errorText = await response.text();
+      logError(`HTTP Error ${response.status}: ${errorText}`);
       throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
@@ -58,11 +62,16 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
     logError(`Upload error for capture #${captureId}`, err);
     console.error('[uploadScreenshot] ❌ Upload error:', err);
     
+    // Enhanced error message for network errors
+    const errorMessage = err.message || String(err);
+    
     // Show user-friendly message
-    if (err.message?.includes('401')) {
+    if (errorMessage.includes('401')) {
       toast.error("Erreur d'authentification. Veuillez vous reconnecter.");
+    } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+      toast.error("Erreur réseau. Vérifiez votre connexion internet.");
     } else {
-      toast.error("Échec de l'envoi de la capture d'écran. Réessayez plus tard.");
+      toast.error(`Échec de l'envoi de la capture d'écran: ${errorMessage}`);
     }
     
     // Re-throw the error for proper retry handling

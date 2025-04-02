@@ -67,13 +67,18 @@ serve(async (req) => {
       throw new Error(`Storage error: ${uploadError.message}`)
     }
 
-    // Get the public URL for the uploaded file
-    const { data: urlData } = await supabaseAdmin
+    // Create a signed URL for the uploaded file with 24-hour expiration
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin
       .storage
       .from('screenshots')
-      .getPublicUrl(filename)
-
-    const imageUrl = urlData.publicUrl
+      .createSignedUrl(filename, 60 * 60 * 24) // 24 hours expiry
+    
+    if (signedUrlError) {
+      console.error('Signed URL error:', signedUrlError)
+      throw new Error(`Signed URL error: ${signedUrlError.message}`)
+    }
+    
+    const imageUrl = signedUrlData.signedUrl
     
     // Log the screenshot in the database
     const { data: logData, error: logError } = await supabaseAdmin
@@ -92,7 +97,7 @@ serve(async (req) => {
       throw new Error(`Database error: ${logError.message}`)
     }
 
-    // Return the image URL
+    // Return the signed image URL
     return new Response(
       JSON.stringify({ url: imageUrl }),
       {

@@ -25,6 +25,7 @@ export const useMediaStream = (
   // Clean up on unmount
   useEffect(() => {
     return () => {
+      logDebug("Component unmounting, cleaning up resources");
       mountedRef.current = false;
       stopCapture();
     };
@@ -32,6 +33,11 @@ export const useMediaStream = (
   
   // Request screen capture permission and set up stream
   const requestPermission = useCallback(async () => {
+    if (!mountedRef.current) {
+      logDebug("Component already unmounted, skipping permission request");
+      return false;
+    }
+    
     if (permissionInProgressRef.current) {
       logDebug("Permission request already in progress, skipping");
       return false;
@@ -41,7 +47,9 @@ export const useMediaStream = (
     permissionAttemptRef.current = true;
     
     // Update UI state
-    setRequestingStatus();
+    if (mountedRef.current) {
+      setRequestingStatus();
+    }
     
     try {
       // Set up media constraints based on config
@@ -71,7 +79,9 @@ export const useMediaStream = (
       stream.getVideoTracks().forEach(track => {
         track.onended = () => {
           logDebug("User stopped sharing screen");
-          stopCapture();
+          if (mountedRef.current) {
+            stopCapture();
+          }
         };
       });
       
@@ -79,8 +89,10 @@ export const useMediaStream = (
       mediaStreamRef.current = stream;
       
       // Set active status and restart countdown
-      setActiveStatus();
-      setCountdown(intervalSeconds);
+      if (mountedRef.current) {
+        setActiveStatus();
+        setCountdown(intervalSeconds);
+      }
       
       permissionInProgressRef.current = false;
       return true;
@@ -93,10 +105,12 @@ export const useMediaStream = (
       
       // Handle permission denied or other errors
       logError("Screen capture permission error", error);
-      if (error.name === "NotAllowedError") {
-        setErrorStatus(new Error("Permission denied for screen capture"));
-      } else {
-        setErrorStatus(error);
+      if (mountedRef.current) {
+        if (error.name === "NotAllowedError") {
+          setErrorStatus(new Error("Permission denied for screen capture"));
+        } else {
+          setErrorStatus(error);
+        }
       }
       
       permissionInProgressRef.current = false;
@@ -108,6 +122,7 @@ export const useMediaStream = (
   const stopStreamTracks = useCallback((stream) => {
     if (!stream) return;
     
+    logDebug("Stopping all stream tracks");
     stream.getTracks().forEach(track => {
       track.stop();
     });

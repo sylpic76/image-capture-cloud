@@ -17,37 +17,35 @@ export const useTimer = (
   
   // Set up the countdown timer
   useEffect(() => {
+    // Clear existing timer on any status change
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
     if (status !== 'active') {
-      // Clear any existing timer if not active
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
       return;
     }
     
-    // If active, set up countdown
-    if (!timerRef.current) {
-      // Immediately tick once to start
-      const tick = async () => {
-        setCountdown(prevCountdown => {
-          const newCountdown = prevCountdown <= 1 ? intervalSeconds : prevCountdown - 1;
-          
-          // When countdown reaches threshold, trigger capture
-          if (prevCountdown <= 1) {
-            logDebug("Countdown reached threshold, triggering capture callback");
-            captureCallback();
-          }
-          
-          logDebug(`Countdown: ${prevCountdown} -> ${newCountdown}`);
-          return newCountdown;
-        });
-      };
-      
-      // Start the timer
-      tick();
-      timerRef.current = setInterval(tick, 1000);
-    }
+    // Start a new timer only if status is active
+    logDebug(`Starting countdown timer from ${countdown} with ${intervalSeconds} second interval`);
+    
+    // Define tick function
+    const tick = async () => {
+      setCountdown(prevCountdown => {
+        if (prevCountdown <= 1) {
+          logDebug("Countdown reached threshold, triggering capture callback");
+          captureCallback();
+          return intervalSeconds; // Reset to initial interval
+        } else {
+          logDebug(`Countdown: ${prevCountdown} -> ${prevCountdown - 1}`);
+          return prevCountdown - 1;
+        }
+      });
+    };
+    
+    // Set up the interval timer
+    timerRef.current = setInterval(tick, 1000);
     
     // Cleanup timer on unmount or status change
     return () => {
@@ -56,7 +54,7 @@ export const useTimer = (
         timerRef.current = null;
       }
     };
-  }, [intervalSeconds, status, captureCallback]);
+  }, [status, intervalSeconds, captureCallback]);
   
   return { countdown, setCountdown };
 };
