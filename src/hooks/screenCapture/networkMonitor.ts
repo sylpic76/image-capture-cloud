@@ -1,6 +1,7 @@
 
 import { createLogger } from './logger';
 import { toast } from 'sonner';
+import { supabase } from "@/integrations/supabase/client";
 
 const { logError, logDebug } = createLogger();
 
@@ -11,13 +12,34 @@ export const setupNetworkMonitor = (): () => void => {
   // Réponses courantes d'erreur et leur signification
   const errorMessages: Record<number, string> = {
     400: "Requête incorrecte. Vérifiez les paramètres.",
-    401: "Non autorisé. Vérifiez vos identifiants.",
+    401: "Session expirée ou non autorisée. Veuillez vous reconnecter.",
     403: "Accès refusé. Vérifiez les permissions.",
     404: "Ressource introuvable. Vérifiez l'URL.",
     500: "Erreur serveur. Réessayez plus tard.",
     502: "Erreur de passerelle. Serveur indisponible.",
     503: "Service indisponible. Réessayez plus tard.",
     504: "Délai d'attente dépassé. Vérifiez votre connexion."
+  };
+
+  // Store a reference to handle for refreshing tokens
+  let refreshTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  // Helper function to try refreshing the session token
+  const tryRefreshToken = async () => {
+    try {
+      logDebug("Tentative de rafraîchissement du token...");
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        logError("Échec du rafraîchissement du token", error);
+      } else if (data?.session) {
+        logDebug("Token rafraîchi avec succès");
+        return true;
+      }
+    } catch (err) {
+      logError("Erreur lors du rafraîchissement du token", err);
+    }
+    return false;
   };
 
   // Intercepter les requêtes fetch pour mieux gérer les erreurs
@@ -43,6 +65,17 @@ export const setupNetworkMonitor = (): () => void => {
         const isBackground = url.includes('?t=');
         if (!isBackground) {
           toast.error(`Erreur réseau: ${errorMessage}`);
+          
+          // If we get a 401 unauthorized, try to refresh the token
+          if (status === 401 && !refreshTimeoutId) {
+            refreshTimeoutId = setTimeout(async () => {
+              const success = await tryRefreshToken();
+              if (success) {
+                toast.success("Authentification renouvelée");
+              }
+              refreshTimeoutId = null;
+            }, 1000); // Small delay to avoid multiple refreshes
+          }
         }
       }
       
@@ -93,6 +126,7 @@ export const setupNetworkMonitor = (): () => void => {
     window.onerror = originalOnError;
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
+    if (refreshTimeoutId) clearTimeout(refreshTimeoutId);
     logDebug("Moniteur réseau désactivé");
   };
 };
