@@ -14,6 +14,14 @@ export const useTimer = (
 ) => {
   const [countdown, setCountdown] = useState<number>(intervalSeconds);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+  
+  // Reset countdown when status changes to active
+  useEffect(() => {
+    if (status === 'active') {
+      setCountdown(intervalSeconds);
+    }
+  }, [status, intervalSeconds]);
   
   // Set up the countdown timer
   useEffect(() => {
@@ -28,24 +36,27 @@ export const useTimer = (
     }
     
     // Start a new timer only if status is active
-    logDebug(`Starting countdown timer from ${countdown} with ${intervalSeconds} second interval`);
+    logDebug(`Starting countdown timer with ${intervalSeconds} second interval`);
     
-    // Define tick function
-    const tick = async () => {
+    // Set up the interval timer - ONE interval only
+    timerRef.current = setInterval(() => {
+      if (!isMountedRef.current) return;
+      
       setCountdown(prevCountdown => {
-        if (prevCountdown <= 1) {
+        const newCountdown = prevCountdown <= 1 ? intervalSeconds : prevCountdown - 1;
+        
+        // Log the countdown change
+        logDebug(`Countdown: ${prevCountdown} -> ${newCountdown}`);
+        
+        // Trigger capture when countdown reaches 1
+        if (prevCountdown <= 1 && isMountedRef.current) {
           logDebug("Countdown reached threshold, triggering capture callback");
           captureCallback();
-          return intervalSeconds; // Reset to initial interval
-        } else {
-          logDebug(`Countdown: ${prevCountdown} -> ${prevCountdown - 1}`);
-          return prevCountdown - 1;
         }
+        
+        return newCountdown;
       });
-    };
-    
-    // Set up the interval timer
-    timerRef.current = setInterval(tick, 1000);
+    }, 1000);  // Always use 1000ms (1 second) for the countdown
     
     // Cleanup timer on unmount or status change
     return () => {
@@ -55,6 +66,17 @@ export const useTimer = (
       }
     };
   }, [status, intervalSeconds, captureCallback]);
+  
+  // Handle component unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
   
   return { countdown, setCountdown };
 };

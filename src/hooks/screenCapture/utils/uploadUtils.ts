@@ -12,28 +12,18 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
   const endpoint = `https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/capture-screenshot?t=${Date.now()}`;
   
   try {
-    // Get the JWT token from the current session to ensure we're authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
-    
     // Log blob details for debugging
     logDebug(`Uploading screenshot #${captureId}: type=${blob.type}, size=${blob.size} bytes`);
     
-    // If we have a session token, use it; otherwise use the anon key
+    // Get the anon key directly from environment variables
     const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const authHeader = accessToken 
-      ? `Bearer ${accessToken}` 
-      : `Bearer ${SUPABASE_ANON_KEY}`;
     
-    logDebug(`Using auth header: ${accessToken ? 'JWT token' : 'Anon key'}`);
-    
-    // Set up request with proper Authorization header
+    // Set up request with only the apikey header, no JWT auth
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': blob.type,
-        'Authorization': authHeader,
-        'apikey': SUPABASE_ANON_KEY, // Add the apikey header which is also needed
+        'apikey': SUPABASE_ANON_KEY,
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
       },
@@ -67,7 +57,7 @@ export async function uploadScreenshot(blob: Blob, captureId: number): Promise<s
     
     // Show user-friendly message
     if (errorMessage.includes('401')) {
-      toast.error("Erreur d'authentification. Veuillez vous reconnecter.");
+      toast.error("Erreur lors de l'envoi. Vérifiez les autorisations.");
     } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
       toast.error("Erreur réseau. Vérifiez votre connexion internet.");
     } else {

@@ -20,14 +20,13 @@ serve(async (req) => {
     })
   }
   
-  // Get the JWT token from the authorization header
-  const authHeader = req.headers.get('authorization')
+  // Get the API key from the header
   const apiKey = req.headers.get('apikey')
   
-  if (!authHeader || !apiKey) {
-    console.error("Missing required authentication headers")
+  if (!apiKey) {
+    console.error("Missing required API key")
     return new Response(
-      JSON.stringify({ error: "Missing authentication credentials" }),
+      JSON.stringify({ error: "Missing API key" }),
       {
         status: 401,
         headers: {
@@ -47,7 +46,7 @@ serve(async (req) => {
     const timestamp = new Date().toISOString().replace(/[:\.]/g, '').substring(0, 15)
     const filename = `screen_${timestamp}.png`
     
-    // Initialize Supabase client with the ANON key and pass along the auth header
+    // Initialize Supabase client with environment variables
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
