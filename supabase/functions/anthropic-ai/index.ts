@@ -5,8 +5,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Configuration constants
 const GEMINI_API_KEY = "AIzaSyCxyjxbTEJsvVrztaBLqf_janZYIHXqllk";
-// API URLs for Gemini AI - using stable gemini-pro model
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+// API URLs for Gemini AI - explicitly specifying the correct versions
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent";
 
 // CORS headers configuration
 const corsHeaders = {
@@ -49,11 +49,13 @@ serve(async (req) => {
     }
 
     console.log("Sending request to Gemini API...");
+    console.log(`API URL: ${GEMINI_API_URL}`);
     
-    // Updated request format for Gemini API v1beta with gemini-pro model
+    // Request format for Gemini API v1
     const requestBody = {
       contents: [
         {
+          role: "user",
           parts: [
             { text: userMessage }
           ]
@@ -65,9 +67,10 @@ serve(async (req) => {
       }
     };
     
-    // Include system instruction if supported by the model - this is different for v1beta
+    // Include system instruction
     if (systemInstruction) {
       requestBody.contents.unshift({
+        role: "system",
         parts: [{ text: systemInstruction }]
       });
     }
@@ -89,7 +92,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: `Gemini API responded with ${response.status}: ${errorText}`,
-          suggestion: "L'API a rencontré une erreur. Veuillez réessayer votre message."
+          response: `Erreur API Gemini (${response.status}): ${errorText}`
         }),
         { 
           status: response.status, 
@@ -104,8 +107,8 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Gemini API response received successfully");
 
-    // Extract and return the assistant's response - updated path for v1beta format
-    const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas pu traiter votre demande.";
+    // Extract and return the assistant's response 
+    const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Problème avec la réponse de l'API.";
 
     return new Response(
       JSON.stringify({ 
@@ -128,7 +131,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        suggestion: "L'API a rencontré une erreur. Veuillez réessayer votre message."
+        response: `Erreur technique: ${error.message}`
       }),
       { 
         status: 500, 

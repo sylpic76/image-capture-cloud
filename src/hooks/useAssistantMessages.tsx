@@ -37,7 +37,6 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
           screenshotBase64 = await fetchLatestScreenshot(setImageProcessingStatus);
         } catch (error) {
           console.error('Erreur lors de la récupération de la capture:', error);
-          // On continue sans la capture d'écran
           toast.error("Impossible d'obtenir la capture d'écran. La question sera traitée sans image.");
         }
       }
@@ -47,7 +46,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
         const responseData = await sendMessageToAI(input.trim(), screenshotBase64);
         
         // Add feedback if image was processed
-        let responseMessage = responseData.response || "Désolé, je n'ai pas pu traiter votre demande.";
+        let responseMessage = responseData.response || "Problème avec la réponse de l'API.";
         if (screenshotBase64 && responseData.image_processed) {
           responseMessage = `📷 _J'ai reçu votre capture d'écran, mais je ne peux pas l'analyser actuellement._ \n\n${responseMessage}`;
         }
@@ -63,15 +62,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       } catch (error) {
         console.error('Erreur:', error);
         
-        // Generic error message
-        let errorMessage = "Désolé, une erreur s'est produite lors de la communication avec Gemini. Veuillez réessayer votre question, si possible sans capture d'écran.";
-        toast.error("Une erreur est survenue lors de la communication avec Gemini.");
-        
-        // Add an error message to the chat
+        // Add actual error message to the chat
         const errorAssistantMessage: Message = {
           id: Date.now().toString(),
           role: 'assistant',
-          content: errorMessage,
+          content: `Erreur: ${error.message}`,
           timestamp: new Date(),
         };
         

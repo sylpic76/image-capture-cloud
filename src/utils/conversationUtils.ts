@@ -54,7 +54,12 @@ export const sendMessageToAI = async (
       const errorData = await aiResponse.json().catch(() => null);
       console.error("AI Response error:", aiResponse.status, errorData);
       
-      throw new Error(`Erreur lors de la communication avec l'API Gemini: ${aiResponse.status}`);
+      // Return the actual error details
+      if (errorData && errorData.error) {
+        return { response: `Erreur: ${errorData.error}` };
+      }
+      
+      throw new Error(`Erreur de l'API: ${aiResponse.status}`);
     }
     
     const responseData = await aiResponse.json();
@@ -62,7 +67,7 @@ export const sendMessageToAI = async (
   } catch (error) {
     console.error("Error sending message to Gemini:", error);
     
-    // Erreur générique
-    throw error;
+    // Return the actual error message
+    return { response: `Erreur: ${error.message}` };
   }
 };
