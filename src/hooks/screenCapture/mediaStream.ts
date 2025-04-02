@@ -35,10 +35,20 @@ export const requestMediaPermission = async (
     
     logDebug(`Requesting media with constraints: ${JSON.stringify(constraints)}`);
     
-    // Tentative avec gestion d'erreur améliorée
+    // Tentative avec gestion d'erreur améliorée - Timeout ajouté
+    let streamPromise = navigator.mediaDevices.getDisplayMedia(constraints);
+    
+    // Ajouter un timeout pour la demande de permission
+    const timeoutPromise = new Promise<MediaStream>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Permission request timed out"));
+      }, 30000); // 30 secondes de timeout
+    });
+    
+    // Utiliser Promise.race pour gérer le timeout
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      stream = await Promise.race([streamPromise, timeoutPromise]);
     } catch (e) {
       // Si l'erreur est liée aux contraintes, réessayer avec des contraintes minimales
       if (e instanceof DOMException && 
