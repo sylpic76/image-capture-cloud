@@ -13,8 +13,20 @@ export const captureScreen = async (
   incrementFailureCount: () => void,
   setLastCaptureUrl: (url: string) => void
 ): Promise<string | null> => {
-  if (!mediaStream || status !== 'active') {
-    logDebug(`Cannot capture: mediaStream=${!!mediaStream}, status=${status}`);
+  if (!mediaStream) {
+    logDebug(`Cannot capture: mediaStream is null`);
+    return null;
+  }
+  
+  if (status !== 'active') {
+    logDebug(`Cannot capture: status=${status} is not active`);
+    return null;
+  }
+  
+  // Vérifier que le stream est toujours actif avant de continuer
+  if (!mediaStream.active) {
+    logDebug(`Cannot capture: mediaStream is no longer active`);
+    incrementFailureCount();
     return null;
   }
 
@@ -26,7 +38,7 @@ export const captureScreen = async (
       const captureId = incrementCaptureCount();
       logDebug(`Starting screen capture #${captureId}${retryCount > 0 ? ` (retry ${retryCount}/${maxRetries})` : ''}`);
       
-      // Verify stream is active before proceeding
+      // Nouvelle vérification pour détecter rapidement si le stream n'est plus utilisable
       if (!mediaStream.active) {
         throw new Error("MediaStream is no longer active");
       }
@@ -36,20 +48,26 @@ export const captureScreen = async (
         throw new Error("No video tracks found in MediaStream");
       }
       
+      // Vérifier si les pistes sont encore utilisables
+      const activeTracks = videoTracks.filter(track => track.readyState === "live");
+      if (activeTracks.length === 0) {
+        throw new Error("No active video tracks available, all tracks are in 'ended' state");
+      }
+      
       // Log track details for debugging
       videoTracks.forEach(track => {
-        logDebug(`Using video track: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+        logDebug(`Using video track: id=${track.id}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
       });
       
       const video = document.createElement('video');
       video.srcObject = mediaStream;
       video.muted = true;
       
-      // Use more reliable loading method
+      // Use more reliable loading method with reduced timeout
       await new Promise<void>((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-          reject(new Error("Video metadata loading timed out after 5 seconds"));
-        }, 5000);
+          reject(new Error("Video metadata loading timed out after 3 seconds"));
+        }, 3000);
         
         video.onloadedmetadata = () => {
           clearTimeout(timeoutId);
@@ -66,6 +84,7 @@ export const captureScreen = async (
       // Play the video to ensure frame is available
       try {
         await video.play();
+        logDebug("Video playback started successfully");
       } catch (playError) {
         logError("Error playing video", playError);
         throw new Error(`Failed to play video: ${playError}`);
@@ -101,6 +120,7 @@ export const captureScreen = async (
       
       // Stop video playing to release resources
       video.pause();
+      video.srcObject = null;
       
       // Create blob with higher quality and reliable promise handling
       const blob = await new Promise<Blob>((resolve, reject) => {
@@ -187,9 +207,10 @@ export const captureScreen = async (
         return null;
       }
       
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      logDebug(`Retrying capture, attempt ${retryCount}/${maxRetries}`);
+      // Wait before retry with exponential backoff
+      const waitTime = Math.min(1000 * Math.pow(1.5, retryCount), 3000);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      logDebug(`Retrying capture, attempt ${retryCount}/${maxRetries} after waiting ${waitTime}ms`);
     }
   }
   

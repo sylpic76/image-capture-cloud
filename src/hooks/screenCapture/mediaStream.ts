@@ -53,7 +53,7 @@ export const requestMediaPermission = async (
     
     // Log detailed info about each track
     stream.getTracks().forEach(track => {
-      logDebug(`Track obtained: id=${track.id}, kind=${track.kind}, label=${track.label}, enabled=${track.enabled}, muted=${track.muted}`);
+      logDebug(`Track obtained: id=${track.id}, kind=${track.kind}, label=${track.label}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
       
       // Add track ended listener to handle when user stops sharing
       track.addEventListener('ended', () => {
@@ -97,10 +97,10 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
   
   mediaStream.getTracks().forEach(track => {
     try {
-      logDebug(`Stopping track: ${track.kind}, enabled: ${track.enabled}, muted: ${track.muted}`);
+      logDebug(`Stopping track: ${track.kind}, enabled: ${track.enabled}, muted: ${track.muted}, readyState=${track.readyState}`);
       
       // Vérifier si la piste est déjà arrêtée
-      // Fix: Use the proper MediaStreamTrack.readyState enum value
+      // Les valeurs possibles pour readyState sont "live" ou "ended"
       if (track.readyState !== "live") {
         logDebug(`Track ${track.id} already ended, skipping`);
         return;
@@ -117,6 +117,8 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
       // Vérifier si elle a été correctement arrêtée
       if (track.readyState === "live") {
         logError(`Failed to stop track ${track.id}, readyState: ${track.readyState}`, null);
+      } else {
+        logDebug(`Successfully stopped track ${track.id}`);
       }
     } catch (e) {
       logError(`Error stopping track ${track.id}`, e);
