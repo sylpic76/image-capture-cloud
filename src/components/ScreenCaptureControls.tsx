@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlayCircle, PauseCircle, Camera, Lock } from "lucide-react";
+import { Loader2, PlayCircle, PauseCircle, Camera, Lock, Clock } from "lucide-react";
 import ScreenCaptureDebugger from './ScreenCaptureDebugger';
 
 interface ScreenCaptureControlsProps {
@@ -103,9 +103,10 @@ const ScreenCaptureControls = ({
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div>
             {status === 'active' ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-md">
+                <Clock className="text-primary h-5 w-5" />
                 <span className="text-muted-foreground">Prochaine capture dans:</span>
-                <span className="font-medium text-lg">{countdown}s</span>
+                <span className="font-bold text-lg text-primary">{countdown}s</span>
               </div>
             ) : (
               <p className="text-muted-foreground">

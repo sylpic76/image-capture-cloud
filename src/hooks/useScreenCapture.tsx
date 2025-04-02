@@ -12,8 +12,8 @@ import { useDiagnostics } from './screenCapture/useDiagnostics';
 import { setupNetworkMonitor } from './screenCapture/networkMonitor';
 import { useEffect } from 'react';
 
-// Set the default interval to 5 seconds (5000ms)
-export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) => {
+// Set the default interval to 10 seconds (10000ms)
+export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) => {
   const { logDebug } = createLogger();
   
   // Use the new state management hook
@@ -130,6 +130,9 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
         logDebug("Permission granted, setting countdown");
         // Explicitly log the success here
         logDebug("Capture activated successfully");
+        // Make sure countdown is initialized properly
+        setCountdown(intervalSeconds);
+        toast.success("Capture d'écran activée");
       } else {
         logDebug("Permission denied or component unmounted");
       }
@@ -151,11 +154,12 @@ export const useScreenCapture = (intervalSeconds = 5, config = defaultConfig) =>
       }
       
       setActiveStatus();
+      setCountdown(intervalSeconds); // Reset countdown when resuming
       toast.success("Capture d'écran reprise");
     } else {
       logDebug(`No action for status: ${status}`);
     }
-  }, [status, requestPermission, setPauseStatus, setActiveStatus, mountedRef]);
+  }, [status, requestPermission, setPauseStatus, setActiveStatus, mountedRef, intervalSeconds, setCountdown]);
 
   return {
     status,
