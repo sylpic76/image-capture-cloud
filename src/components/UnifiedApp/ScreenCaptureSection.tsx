@@ -44,6 +44,7 @@ const ScreenCaptureSection = ({
       const response = await fetch(`${lastCaptureEndpoint}${cacheBuster}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Cache-Control': 'no-cache, no-store',
           'Pragma': 'no-cache',
         },
@@ -51,7 +52,8 @@ const ScreenCaptureSection = ({
       });
 
       if (!response.ok) {
-        console.error('Error fetching screenshot URL:', response.status);
+        const errorText = await response.text();
+        console.error('Error fetching screenshot URL:', response.status, errorText);
         toast.error(`Erreur lors de la récupération de l'URL: ${response.status}`);
         setIsImageLoading(false);
         return;
@@ -87,6 +89,7 @@ const ScreenCaptureSection = ({
       const url = URL.createObjectURL(blob);
       setLatestScreenshot(url);
       setLastRefreshTime(new Date());
+      toast.success("Capture d'écran récupérée avec succès");
     } catch (error) {
       console.error('Error:', error);
       toast.error("Impossible de récupérer la dernière capture d'écran");

@@ -61,4 +61,4 @@ enable_signup = true
 port = 54321
 
 [functions.last-capture]
-verify_jwt = true
+verify_jwt = false
