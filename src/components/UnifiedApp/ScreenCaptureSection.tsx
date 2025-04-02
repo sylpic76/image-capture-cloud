@@ -62,9 +62,11 @@ const ScreenCaptureSection = ({
         setLastRefreshTime(new Date());
       } else {
         console.error('Error fetching screenshot:', response.status);
+        toast.error(`Erreur lors de la récupération de l'image: ${response.status}`);
       }
     } catch (error) {
       console.error('Error:', error);
+      toast.error("Impossible de récupérer la dernière capture d'écran");
     } finally {
       setIsImageLoading(false);
     }
@@ -134,7 +136,7 @@ const ScreenCaptureSection = ({
         </CardContent>
       </Card>
       
-      {/* API Endpoint for JSON */}
+      {/* API Endpoint Link */}
       <EndpointLink 
         link={screenshotsApiEndpoint}
         title="API REST Supabase (JSON)"

@@ -92,6 +92,7 @@ export const fetchLatestScreenshot = async (
     // Add cache buster to prevent browser caching
     const cacheBuster = Date.now();
     
+    // Utilisez l'URL correcte pour le endpoint latest avec un param de cache busting
     const response = await fetch(`https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest?t=${cacheBuster}`, {
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -110,6 +111,7 @@ export const fetchLatestScreenshot = async (
     } else {
       console.error("Failed to fetch screenshot:", response.status, response.statusText);
       setImageProcessingStatus('error');
+      toast.error(`Erreur lors de la récupération de la capture: ${response.status}`);
       return null;
     }
   } catch (error) {

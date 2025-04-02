@@ -13,14 +13,14 @@ import { Copy, ExternalLink } from "lucide-react";
 
 const Index = () => {
   // Use our custom screen capture hook with 10 second interval
-  const { status, countdown, toggleCapture, lastCaptureUrl } = useScreenCapture(10);
+  const { status, countdown, toggleCapture } = useScreenCapture(10);
   const [screenshots, setScreenshots] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Supabase REST API link
   const supabaseLink = "https://mvuccsplodgeomzqnwjs.supabase.co/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10";
   
-  // Direct latest screenshot link - Mise à jour du format pour V1
+  // Direct latest screenshot link
   const latestImageLink = "https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/latest";
 
   // Fetch screenshots from Supabase
@@ -77,10 +77,10 @@ const Index = () => {
   };
 
   const openLatestImage = () => {
-    window.open(latestImageLink, '_blank');
+    // Ajouter un cache-buster pour s'assurer d'obtenir la dernière image
+    const url = `${latestImageLink}?t=${Date.now()}`;
+    window.open(url, '_blank');
   };
-
-  // Pas de démarrage automatique de la capture au chargement
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">

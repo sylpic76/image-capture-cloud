@@ -1,9 +1,11 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, RefreshCw } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { toast } from 'sonner';
 
 interface Screenshot {
   id: string;
@@ -17,19 +19,37 @@ interface ScreenshotGalleryProps {
 }
 
 const ScreenshotGallery = ({ screenshots, loading }: ScreenshotGalleryProps) => {
+  const [refreshing, setRefreshing] = useState(false);
+  
   // Fonction pour ajouter un timestamp aux URLs d'images pour éviter le cache
   const addCacheBuster = (url: string) => {
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}t=${Date.now()}`;
   };
+  
+  // Fonction pour rafraîchir manuellement les images
+  const refreshImages = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+    toast.success("Images rafraîchies");
+  };
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex flex-row justify-between items-center">
         <CardTitle className="text-xl flex items-center gap-2">
           <ImageIcon size={20} />
           Screenshots Récents
         </CardTitle>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={refreshImages} 
+          disabled={refreshing}
+          title="Rafraîchir les images"
+        >
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+        </Button>
       </CardHeader>
       <CardContent>
         {loading ? (
