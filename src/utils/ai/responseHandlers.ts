@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 /**
- * Handle failed API response
+ * Handle failed API response with detailed diagnostics
  */
 export const handleFailedResponse = async (
   aiResponse: Response, 
@@ -36,7 +36,7 @@ export const handleFailedResponse = async (
     return { 
       retry: false,
       response: { 
-        response: `Erreur réseau: Problème de CORS ou de connexion. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et configurée.` 
+        response: `Erreur réseau: Problème de CORS ou de connexion. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et configurée avec les en-têtes CORS appropriés.` 
       }
     };
   }
@@ -67,7 +67,7 @@ export const handleFailedResponse = async (
 };
 
 /**
- * Parse AI response
+ * Parse AI response with better error handling
  */
 export const parseAiResponse = async (
   aiResponse: Response
@@ -95,6 +95,13 @@ export const parseAiResponse = async (
     toast.error("Erreur de format de réponse", {
       description: "La réponse n'est pas au format JSON attendu"
     });
+    try {
+      // Tenter de lire le corps de la réponse comme texte
+      const textResponse = await aiResponse.text();
+      console.error("[Assistant] Réponse brute non-JSON:", textResponse);
+    } catch (e) {
+      console.error("[Assistant] Impossible de lire le corps de la réponse");
+    }
     return { response: `Erreur: La réponse du serveur n'est pas au format JSON attendu.` };
   }
 };
@@ -107,6 +114,12 @@ export const logNetworkError = (error: TypeError): void => {
     navigator: {
       onLine: navigator.onLine,
       userAgent: navigator.userAgent,
+    },
+    connection: {
+      effectiveType: (navigator as any).connection?.effectiveType,
+      downlink: (navigator as any).connection?.downlink,
+      rtt: (navigator as any).connection?.rtt,
+      saveData: (navigator as any).connection?.saveData
     },
     error: error.toString(),
     stack: error.stack

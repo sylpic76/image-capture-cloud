@@ -2,9 +2,10 @@
 import { toast } from 'sonner';
 import { createRequestInit, logSafeRequestDetails } from './requestBuilder';
 import { handleFailedResponse, parseAiResponse, logNetworkError } from './responseHandlers';
+import { testApiEndpoint } from '../networkUtils';
 
 /**
- * Send request to AI API with retry mechanism
+ * Send request to AI API with enhanced retry mechanism
  */
 export const sendRequestWithRetries = async (
   apiEndpoint: string,
@@ -14,6 +15,18 @@ export const sendRequestWithRetries = async (
 ): Promise<{ response: string; image_processed?: boolean }> => {
   const maxRetries = 3;
   let retryCount = 0;
+  
+  // Test de connectivité à l'endpoint avant de commencer
+  const endpointTest = await testApiEndpoint(apiEndpoint);
+  if (!endpointTest.ok) {
+    console.error(`[Assistant] L'endpoint ${apiEndpoint} n'est pas accessible:`, endpointTest.error);
+    toast.error("Erreur de connexion à l'API", {
+      description: `Vérifiez que la fonction Edge est déployée (${endpointTest.error})`,
+      duration: 10000
+    });
+  } else {
+    console.log(`[Assistant] Test préliminaire de l'endpoint: OK`);
+  }
   
   while (retryCount < maxRetries) {
     try {
@@ -62,10 +75,15 @@ export const sendRequestWithRetries = async (
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         logNetworkError(error);
         
+        // Détails sur l'URL utilisée pour aider au diagnostic
+        console.error(`[Assistant] URL endpoint problématique: ${apiEndpoint}`);
+        console.error(`[Assistant] URL de base Supabase: ${import.meta.env.VITE_SUPABASE_URL}`);
+        console.error(`[Assistant] Nom de fonction: anthropic-ai`);
+        
         if (retryCount === 0) {
           toast.error("Erreur de connexion", {
             description: "Impossible de contacter la fonction Edge 'anthropic-ai'",
-            duration: 7000
+            duration: 10000
           });
         }
       }
@@ -78,19 +96,19 @@ export const sendRequestWithRetries = async (
         continue;
       }
       
-      // Retourner le message d'erreur
+      // Retourner le message d'erreur avec des instructions plus précises
       return { 
-        response: `Erreur de connexion: ${error.message}. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et active.` 
+        response: `Erreur de connexion: ${error.message}. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et active. Si l'erreur persiste, vérifiez les logs de la fonction dans la console Supabase.` 
       };
     }
   }
   
   // Si on a épuisé toutes les tentatives
   toast.error("Échec après plusieurs tentatives", {
-    description: "Vérifiez l'état des fonctions Edge Supabase"
+    description: "Vérifiez l'état des fonctions Edge Supabase et les logs du navigateur"
   });
   
   return { 
-    response: `Erreur: Impossible de contacter le serveur après ${maxRetries} tentatives. Vérifiez que la fonction Edge "anthropic-ai" est active et correctement configurée.` 
+    response: `Erreur: Impossible de contacter le serveur après ${maxRetries} tentatives. Vérifiez que la fonction Edge "anthropic-ai" est active et correctement configurée dans votre projet Supabase.` 
   };
 };
