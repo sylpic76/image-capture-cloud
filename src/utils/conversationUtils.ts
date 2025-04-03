@@ -6,3 +6,5 @@
 
 export { saveConversation } from './conversationPersistence';
 export { sendMessageToAI } from './aiMessageUtils';
+export { prepareMessageRequest } from './ai/messagePreparation';
+export { checkRequiredEnvironmentVars, getApiEndpoint } from './networkUtils';

@@ -2,6 +2,7 @@
 import { toast } from 'sonner';
 import { checkRequiredEnvironmentVars, getApiEndpoint } from './networkUtils';
 import { sendRequestWithRetries } from './ai/retryMechanism';
+import { prepareMessageRequest } from './ai/messagePreparation';
 
 /**
  * Send a message to the AI with retry mechanism
@@ -26,24 +27,12 @@ export const sendMessageToAI = async (
     };
   }
   
-  console.log(`[Assistant] Envoi vers: ${apiEndpoint}`);
-  console.log(`[Assistant] Données: screenshot=${screenshotBase64 ? "oui" : "non"}, projet="${projectName}"`);
-  
-  // Test de connectivité
-  try {
-    const online = navigator.onLine;
-    console.log(`[Assistant] État réseau: ${online ? "En ligne" : "Hors ligne"}`);
-    if (!online) {
-      toast.error("Pas de connexion Internet", {
-        description: "Vérifiez votre connexion et réessayez"
-      });
-      return { 
-        response: "Erreur: Pas de connexion Internet. Veuillez vérifier votre connectivité et réessayer."
-      };
-    }
-  } catch (e) {
-    console.log("[Assistant] Impossible de vérifier l'état du réseau:", e);
+  // Prepare and validate request
+  const requestInfo = await prepareMessageRequest(input, screenshotBase64, projectName);
+  if (!requestInfo.valid) {
+    return { response: requestInfo.errorMessage || "Erreur de préparation de la requête." };
   }
   
+  // Send request with retries
   return await sendRequestWithRetries(apiEndpoint, input, screenshotBase64, projectName);
 };

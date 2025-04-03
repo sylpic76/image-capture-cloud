@@ -67,11 +67,6 @@ export async function handleMessageSubmission({
       }
     }
 
-    // Vérification de la valeur des variables d'environnement (en masquant les valeurs sensibles)
-    console.log("[Assistant] Vérification des variables d'environnement:");
-    console.log(`VITE_SUPABASE_URL: ${import.meta.env.VITE_SUPABASE_URL ? "Définie" : "Non définie"}`);
-    console.log(`VITE_SUPABASE_ANON_KEY: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? "Définie (longueur: " + import.meta.env.VITE_SUPABASE_ANON_KEY.length + ")" : "Non définie"}`);
-
     // Tentative d'envoi du message à l'assistant
     console.log("[Assistant] Envoi du message à l'API assistant");
     const aiResponseData = await sendMessageToAI(input, screenshotData, currentProject);
