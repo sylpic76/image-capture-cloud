@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ImageProcessingStatus } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
@@ -11,7 +10,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
 
-  const networkStatus = useNetworkStatus();
+  const networkStatus = useNetworkStatus(); // ← tu peux même supprimer ça si inutilisé
 
   const {
     messages,
@@ -26,19 +25,10 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     clearConversation
   } = useConversationState();
 
-  /**
-   * Handle form submission to send a message to the assistant
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!input.trim()) return;
-
-    // ✅ Vérification compatible avec types ("online" ou "uncertain")
-    if (networkStatus !== 'online') {
-      toast.error("Connexion instable ou hors-ligne. Impossible de communiquer avec l'assistant.");
-      return;
-    }
 
     addUserMessage(input);
     setInput('');
@@ -55,11 +45,10 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
           if (screenshotData) {
             setImageProcessingStatus('success');
           } else {
-            console.warn("Screenshot fetched but empty.");
             setImageProcessingStatus('error');
           }
         } catch (error) {
-          console.error('Erreur screenshot:', error);
+          console.error('Erreur capture écran:', error);
           setImageProcessingStatus('error');
           toast.error('Erreur capture écran. L\'assistant continue sans image.');
         }
@@ -71,13 +60,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     } catch (error: any) {
       console.error('Erreur assistant:', error);
       addErrorMessage(error);
-
-      // ✅ Pas de comparaison directe avec "offline" si ce type n’existe pas
-      const message = networkStatus !== 'online'
-        ? 'Vérifiez votre connexion internet.'
-        : '';
-
-      toast.error(`Erreur assistant. ${message}`);
+      toast.error(`Erreur assistant. Détail: ${error.message || 'inconnu'}`);
     } finally {
       setIsLoading(false);
       setImageProcessingStatus('idle');
@@ -95,6 +78,6 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     imageProcessingStatus,
     currentProject,
     setCurrentProject,
-    networkStatus
+    networkStatus // ← à supprimer ici aussi si t’en sers pas dans le UI
   };
 };
