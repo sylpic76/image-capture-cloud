@@ -1,7 +1,7 @@
 
 import { createLogger } from '../logger';
 
-const { logError } = createLogger();
+const { logError, logDebug } = createLogger();
 
 // Setup global error handler
 export const setupErrorObserver = (): () => void => {
@@ -21,8 +21,3 @@ export const setupErrorObserver = (): () => void => {
     logDebug("Observateur d'erreurs désactivé");
   };
 };
-
-// Helper function to create logger for this module
-function logDebug(message: string): void {
-  console.log(`[ErrorObserver] ${message}`);
-}

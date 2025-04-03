@@ -31,11 +31,7 @@ export const setupFetchInterceptor = (): () => void => {
               .filter(([key]) => !['Authorization', 'apikey'].includes(key))
           ) : {};
         
-        logDebug(`Assistant request details: ${method} ${url}`, { 
-          headers,
-          bodySize: requestInit?.body ? String(requestInit.body).length : 0,
-          cache: requestInit?.cache || 'default'
-        });
+        logDebug(`Assistant request details: ${method} ${url}`);
       }
     }
     

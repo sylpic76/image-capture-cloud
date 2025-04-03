@@ -56,12 +56,7 @@ export const handleFetchError = (url: string, error: Error) => {
     if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
       // Informatons détaillées sur l'erreur réseau
       toast.error("Erreur réseau. Vérifiez votre connexion internet et que le serveur est accessible.");
-      logDebug("Informations réseau supplémentaires", {
-        downlink: (navigator as any).connection?.downlink,
-        effectiveType: (navigator as any).connection?.effectiveType,
-        rtt: (navigator as any).connection?.rtt,
-        saveData: (navigator as any).connection?.saveData,
-      });
+      logDebug("Informations réseau supplémentaires");
     } else {
       toast.error(`Erreur: ${errorMessage}`);
     }
