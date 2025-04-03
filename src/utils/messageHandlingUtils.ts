@@ -88,7 +88,7 @@ export async function handleMessageSubmission({
         name: error.name,
         message: error.message,
         stack: error.stack,
-        cause: error.cause
+        // Fix: Remove cause property which requires ES2022
       });
     }
     

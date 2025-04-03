@@ -50,6 +50,7 @@ export const setupFetchInterceptor = (): () => void => {
       }
       
       if ((isAssistantEndpoint || isScreenshotEndpoint) && !response.ok) {
+        // Fix: handleHttpError with correct arguments
         const { status, isBackground } = handleHttpError(url, response.status, response.statusText, responseTime);
         
         // If we get a 401 unauthorized, try to refresh the token

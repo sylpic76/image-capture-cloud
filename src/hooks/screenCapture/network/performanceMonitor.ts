@@ -10,7 +10,9 @@ export const setupPerformanceMonitor = (): () => void => {
   try {
     observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        if (entry.initiatorType === 'fetch' && 
+        // Fix: Type check and cast to ensure we have initiatorType
+        if ('initiatorType' in entry && 
+            (entry as PerformanceResourceTiming).initiatorType === 'fetch' && 
             (entry.name.includes('anthropic-ai') || entry.name.includes('capture-screenshot'))) {
           const duration = entry.duration;
           if (duration > 3000) { // If more than 3 seconds
