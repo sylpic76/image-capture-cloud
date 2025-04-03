@@ -32,7 +32,7 @@ export const getApiEndpoint = (): string | null => {
     return null;
   }
   
-  // Nettoyage de l'URL pour éviter les problèmes de double slash
+  // Clean up the URL to avoid double slash issues
   const baseUrl = import.meta.env.VITE_SUPABASE_URL.endsWith('/') 
     ? import.meta.env.VITE_SUPABASE_URL.slice(0, -1) 
     : import.meta.env.VITE_SUPABASE_URL;
@@ -40,7 +40,7 @@ export const getApiEndpoint = (): string | null => {
   const url = `${baseUrl}/functions/v1/anthropic-ai`;
   
   // Log the full URL to help with debugging
-  console.log(`[Assistant] URL API complète: ${url}`);
+  console.log(`[Assistant] Full API URL: ${url}`);
   
   return url;
 };
@@ -50,9 +50,9 @@ export const getApiEndpoint = (): string | null => {
  */
 export const testApiEndpoint = async (url: string): Promise<{ ok: boolean; error?: string }> => {
   try {
-    console.log(`[Assistant] Test d'accessibilité de l'endpoint: ${url}`);
+    console.log(`[Assistant] Testing endpoint accessibility: ${url}`);
     
-    // Effectuer un test OPTIONS pour voir si l'endpoint est accessible
+    // Perform an OPTIONS test to check if the endpoint is accessible
     const response = await fetch(url, {
       method: 'OPTIONS',
       headers: {
@@ -64,12 +64,12 @@ export const testApiEndpoint = async (url: string): Promise<{ ok: boolean; error
       mode: 'cors'
     });
     
-    console.log(`[Assistant] Réponse du test OPTIONS: ${response.status} ${response.statusText}`);
+    console.log(`[Assistant] OPTIONS test response: ${response.status} ${response.statusText}`);
     
     if (response.ok || response.status === 204) {
       console.log('[Assistant] Endpoint accessible ✓');
     } else {
-      console.error('[Assistant] Erreur d\'accès à l\'endpoint:', response.status, response.statusText);
+      console.error('[Assistant] Endpoint access error:', response.status, response.statusText);
     }
     
     return { 
@@ -77,7 +77,7 @@ export const testApiEndpoint = async (url: string): Promise<{ ok: boolean; error
       error: !response.ok ? `Status: ${response.status} ${response.statusText}` : undefined 
     };
   } catch (error) {
-    console.error("[Assistant] Erreur lors du test de l'endpoint:", error);
+    console.error("[Assistant] Error testing endpoint:", error);
     return { 
       ok: false, 
       error: error.message 

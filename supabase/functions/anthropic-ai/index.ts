@@ -14,11 +14,12 @@ import {
   logBug,
   detectAndSaveInsights 
 } from "./memory-enrichment.ts";
-import { processAnthropicRequest } from "./ai-service.ts";
+import { processRequest } from "./ai-service.ts";
 import { buildSystemPrompt, formatMemoryContext } from "./prompt-builder.ts";
 
 // Log startup to confirm deployment
-console.log("💡 Edge function 'anthropic-ai' starting up...");
+console.log("💡 Edge function 'anthropic-ai' starting up with Gemini AI...");
+console.log("✅ GEMINI_API_KEY loaded:", !!Deno.env.get("GEMINI_API_KEY"));
 
 serve(async (req) => {
   // Log each request
@@ -44,7 +45,7 @@ serve(async (req) => {
     
     const { message, screenshot, projectName } = requestBody;
     
-    // Validation de base
+    // Basic validation
     if (!message) {
       console.error("❌ Missing required 'message' field");
       return new Response(
@@ -82,7 +83,7 @@ serve(async (req) => {
     // Format memory context for the prompt
     const memoryContextText = formatMemoryContext(memoryContext);
     
-    // Analyse du contenu utilisateur et enrichissement de la mémoire
+    // Analyze user content and enrich memory
     await analyzeContent(project.id, message, 'user');
     
     // Save user message to memory
@@ -93,7 +94,7 @@ serve(async (req) => {
     let userMessage = message;
     
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, processing image for Claude Vision API");
+      console.log("Screenshot detected, processing image for Gemini Vision API");
       imageProcessed = true;
       
       // Save screenshot to snapshots
@@ -104,8 +105,8 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(userProfile, project, memoryContextText);
     
     try {
-      // Process the request with Anthropic's Claude API
-      const assistantResponse = await processAnthropicRequest(
+      // Process the request with Google's Gemini API
+      const assistantResponse = await processRequest(
         systemPrompt, 
         userMessage, 
         screenshot
@@ -114,13 +115,13 @@ serve(async (req) => {
       // Save assistant response to memory
       await saveToMemory(project.id, 'assistant', assistantResponse);
       
-      // Analyser la réponse de l'assistant pour des insights
+      // Analyze the assistant's response for insights
       await detectAndSaveInsights(project.id, assistantResponse);
       
       return new Response(
         JSON.stringify({ 
           response: assistantResponse,
-          model: "claude-3-opus-20240229",
+          model: "gemini-pro",
           image_processed: imageProcessed
         }),
         { 
@@ -133,15 +134,15 @@ serve(async (req) => {
       );
       
     } catch (aiError) {
-      console.error(`Claude API error: ${aiError.message}`);
+      console.error(`Gemini API error: ${aiError.message}`);
       
       // Log the error as a bug
-      await logBug(project.id, aiError.message, "Claude API");
+      await logBug(project.id, aiError.message, "Gemini API");
       
       return new Response(
         JSON.stringify({ 
           error: aiError.message,
-          response: `Erreur API Claude: ${aiError.message}`
+          response: `Erreur API Gemini: ${aiError.message}`
         }),
         { 
           status: 500, 
@@ -154,7 +155,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error("❌ Error in anthropic-ai function:", error);
+    console.error("❌ Error in AI function:", error);
     
     return new Response(
       JSON.stringify({ 

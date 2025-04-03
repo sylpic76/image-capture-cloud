@@ -17,7 +17,7 @@ export const setupFetchInterceptor = (): () => void => {
     const isScreenshotEndpoint = url.includes('capture-screenshot') || url.includes('latest');
     
     if (isAssistantEndpoint || isScreenshotEndpoint) {
-      logDebug(`Requête réseau interceptée vers: ${url}`);
+      logDebug(`Network request intercepted to: ${url}`);
       
       // Log detailed request information
       if (isAssistantEndpoint) {
@@ -31,7 +31,7 @@ export const setupFetchInterceptor = (): () => void => {
               .filter(([key]) => !['Authorization', 'apikey'].includes(key))
           ) : {};
         
-        logDebug(`Détails requête assistant: ${method} ${url}`, { 
+        logDebug(`Assistant request details: ${method} ${url}`, { 
           headers,
           bodySize: requestInit?.body ? String(requestInit.body).length : 0,
           cache: requestInit?.cache || 'default'
@@ -46,7 +46,7 @@ export const setupFetchInterceptor = (): () => void => {
       const responseTime = Math.round(endTime - startTime);
       
       if ((isAssistantEndpoint || isScreenshotEndpoint) && responseTime > 500) {
-        logDebug(`Requête lente (${responseTime}ms): ${url}`);
+        logDebug(`Slow request (${responseTime}ms): ${url}`);
       }
       
       if ((isAssistantEndpoint || isScreenshotEndpoint) && !response.ok) {
@@ -71,6 +71,6 @@ export const setupFetchInterceptor = (): () => void => {
   return () => {
     window.fetch = originalFetch;
     tokenManager.cleanup();
-    logDebug("Intercepteur fetch désactivé");
+    logDebug("Fetch interceptor disabled");
   };
 };
