@@ -17,6 +17,7 @@ export const sendRequestWithRetries = async (
   let retryCount = 0;
   
   // Test de connectivité à l'endpoint avant de commencer
+  console.log(`[Assistant] Teste de connectivité à ${apiEndpoint}...`);
   const endpointTest = await testApiEndpoint(apiEndpoint);
   if (!endpointTest.ok) {
     console.error(`[Assistant] L'endpoint ${apiEndpoint} n'est pas accessible:`, endpointTest.error);
@@ -37,20 +38,22 @@ export const sendRequestWithRetries = async (
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount - 1)));
       }
       
-      // Création de l'objet Request
+      // Création de l'objet Request avec plus de log
       const requestInit = createRequestInit(input, screenshotBase64, projectName);
       
-      // Masquer les informations sensibles dans les logs
+      // Log détaillé de l'URL et des en-têtes (sécurisé)
+      console.log(`[Assistant] URL complète: ${apiEndpoint}`);
       logSafeRequestDetails(requestInit, input, screenshotBase64);
       
       // Mesurer le temps de la requête
       const startTime = performance.now();
       
-      // Exécution de la requête avec un timeout
+      // Exécution de la requête avec un timeout plus long pour les connexions lentes
       const timeoutPromise = new Promise<Response>((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout de la requête après 30 secondes")), 30000);
+        setTimeout(() => reject(new Error("Timeout de la requête après 45 secondes")), 45000);
       });
       
+      console.log(`[Assistant] Envoi de la requête fetch à ${apiEndpoint}`);
       const fetchPromise = fetch(apiEndpoint, requestInit);
       const aiResponse = await Promise.race([fetchPromise, timeoutPromise]);
       
@@ -78,11 +81,12 @@ export const sendRequestWithRetries = async (
         // Détails sur l'URL utilisée pour aider au diagnostic
         console.error(`[Assistant] URL endpoint problématique: ${apiEndpoint}`);
         console.error(`[Assistant] URL de base Supabase: ${import.meta.env.VITE_SUPABASE_URL}`);
+        console.error(`[Assistant] Clé anonyme présente: ${!!import.meta.env.VITE_SUPABASE_ANON_KEY}`);
         console.error(`[Assistant] Nom de fonction: anthropic-ai`);
         
         if (retryCount === 0) {
           toast.error("Erreur de connexion", {
-            description: "Impossible de contacter la fonction Edge 'anthropic-ai'",
+            description: `Impossible de contacter la fonction Edge 'anthropic-ai' à ${new URL(apiEndpoint).pathname}`,
             duration: 10000
           });
         }
@@ -98,7 +102,7 @@ export const sendRequestWithRetries = async (
       
       // Retourner le message d'erreur avec des instructions plus précises
       return { 
-        response: `Erreur de connexion: ${error.message}. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et active. Si l'erreur persiste, vérifiez les logs de la fonction dans la console Supabase.` 
+        response: `Erreur de connexion: ${error.message}. Vérifiez que:\n\n1. La fonction Edge "anthropic-ai" est correctement déployée\n2. La variable ANTHROPIC_API_KEY est configurée dans Supabase\n3. L'URL Supabase et la clé anonyme sont correctes dans votre .env\n\nConsulter les logs de la fonction dans la console Supabase pour plus de détails.` 
       };
     }
   }
@@ -109,6 +113,6 @@ export const sendRequestWithRetries = async (
   });
   
   return { 
-    response: `Erreur: Impossible de contacter le serveur après ${maxRetries} tentatives. Vérifiez que la fonction Edge "anthropic-ai" est active et correctement configurée dans votre projet Supabase.` 
+    response: `Erreur: Impossible de contacter le serveur après ${maxRetries} tentatives. Vérifiez que la fonction Edge "anthropic-ai" est active et correctement configurée dans votre projet Supabase (${import.meta.env.VITE_SUPABASE_URL}).` 
   };
 };

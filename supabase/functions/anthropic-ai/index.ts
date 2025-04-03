@@ -17,9 +17,16 @@ import {
 import { processAnthropicRequest } from "./ai-service.ts";
 import { buildSystemPrompt, formatMemoryContext } from "./prompt-builder.ts";
 
+// Log startup to confirm deployment
+console.log("💡 Edge function 'anthropic-ai' starting up...");
+
 serve(async (req) => {
+  // Log each request
+  console.log(`📥 Request received: ${req.method} ${new URL(req.url).pathname}`);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    console.log("✅ Handling CORS preflight request");
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
@@ -36,6 +43,24 @@ serve(async (req) => {
     }));
     
     const { message, screenshot, projectName } = requestBody;
+    
+    // Validation de base
+    if (!message) {
+      console.error("❌ Missing required 'message' field");
+      return new Response(
+        JSON.stringify({ 
+          error: "Missing required field",
+          response: "Erreur: Le champ 'message' est requis."
+        }),
+        { 
+          status: 400, 
+          headers: { 
+            ...corsHeaders,
+            "Content-Type": "application/json" 
+          } 
+        }
+      );
+    }
     
     // Log project information
     console.log("🏢 Project name received:", projectName || "Default Project");
