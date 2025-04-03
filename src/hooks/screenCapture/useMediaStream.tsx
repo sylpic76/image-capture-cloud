@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createLogger } from './logger';
+import { requestMediaPermission, stopMediaTracks } from './mediaStream';
 
 const { logDebug, logError } = createLogger();
 
@@ -52,22 +53,16 @@ export const useMediaStream = (
     }
     
     try {
-      // Set up media constraints based on config
-      const constraints = {
-        video: {
-          cursor: configRef.current.showCursor ? "always" : "never",
-          displaySurface: "monitor"
-        },
-        audio: false  // No audio capture
-      };
+      // Instead of using the function in this file, use the imported one
+      const stream = await requestMediaPermission(configRef);
       
-      // Request screen capture
-      logDebug(`Requesting screen capture with constraints: ${JSON.stringify(constraints)}`);
-      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      if (!stream) {
+        throw new Error("Failed to obtain media stream");
+      }
       
       if (!mountedRef.current) {
         logDebug("Component unmounted during permission request, cleaning up");
-        stopStreamTracks(stream);
+        stopMediaTracks(stream);
         permissionInProgressRef.current = false;
         return false;
       }
@@ -121,11 +116,7 @@ export const useMediaStream = (
   // Stop all tracks and clear stream
   const stopStreamTracks = useCallback((stream) => {
     if (!stream) return;
-    
-    logDebug("Stopping all stream tracks");
-    stream.getTracks().forEach(track => {
-      track.stop();
-    });
+    stopMediaTracks(stream);
   }, []);
   
   // Stop capture and clean up

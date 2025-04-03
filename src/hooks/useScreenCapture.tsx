@@ -150,16 +150,27 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
     
     if (status === 'idle' || status === 'error') {
       logDebug("Attempting to start capture from idle/error state");
-      const permissionGranted = await requestPermission();
-      if (permissionGranted && isMountedRef.current && mountedRef.current) {
-        logDebug("Permission granted, setting countdown");
-        // Explicitly log the success here
-        logDebug("Capture activated successfully");
-        // Make sure countdown is initialized properly
-        setCountdown(intervalSeconds);
-        toast.success("Capture d'écran activée");
-      } else {
-        logDebug("Permission denied or component unmounted");
+      
+      try {
+        // Force the requestPermission to actually be called and await it properly
+        const permissionGranted = await requestPermission();
+        
+        if (permissionGranted && isMountedRef.current && mountedRef.current) {
+          logDebug("Permission granted, setting countdown");
+          setCountdown(intervalSeconds);
+          toast.success("Capture d'écran activée");
+        } else {
+          logDebug("Permission denied or component unmounted");
+          if (isMountedRef.current) {
+            toast.error("La permission de capture d'écran a été refusée");
+          }
+        }
+      } catch (error) {
+        logDebug("Error requesting permission", error);
+        if (isMountedRef.current) {
+          toast.error("Erreur lors de la demande de permission");
+          setErrorStatus(new Error("Permission request failed"));
+        }
       }
     } else if (status === 'active' && isMountedRef.current) {
       logDebug("Pausing capture");
@@ -171,9 +182,20 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
       // Check if we still have an active stream, request if needed
       if (!mediaStreamRef.current || !mediaStreamRef.current.active) {
         logDebug("Stream no longer active, requesting new permission");
-        const permissionGranted = await requestPermission();
-        if (!permissionGranted || !isMountedRef.current) {
-          logDebug("Failed to get new permission when resuming or component unmounted");
+        try {
+          const permissionGranted = await requestPermission();
+          if (!permissionGranted || !isMountedRef.current) {
+            logDebug("Failed to get new permission when resuming or component unmounted");
+            if (isMountedRef.current) {
+              toast.error("La permission de capture d'écran a été refusée");
+            }
+            return;
+          }
+        } catch (error) {
+          logDebug("Error requesting permission for resume", error);
+          if (isMountedRef.current) {
+            toast.error("Erreur lors de la demande de permission pour reprendre");
+          }
           return;
         }
       }
@@ -184,7 +206,7 @@ export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) =
     } else {
       logDebug(`No action for status: ${status}`);
     }
-  }, [status, requestPermission, setPauseStatus, setActiveStatus, mountedRef, intervalSeconds, setCountdown]);
+  }, [status, requestPermission, setPauseStatus, setActiveStatus, mountedRef, intervalSeconds, setCountdown, setErrorStatus]);
 
   return {
     status,

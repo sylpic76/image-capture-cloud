@@ -40,7 +40,6 @@ export const requestMediaPermission = async (
     
     logDebug(`Requesting media with constraints: ${JSON.stringify(constraints)}`);
     
-    // Utiliser directement getDisplayMedia sans timeout pour éviter les conflits
     try {
       // Ajout d'un mécanisme pour éviter les appels simultanés
       const streamPromise = navigator.mediaDevices.getDisplayMedia(constraints);
@@ -137,7 +136,7 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
       
       // Vérifier si elle a été correctement arrêtée
       if (track.readyState === "live") {
-        logError(`Failed to stop track ${track.id}, readyState: ${track.readyState}`, null);
+        logError(`Failed to stop track ${track.id}, readyState: ${track.readyState}`, new Error("Track could not be stopped"));
       } else {
         logDebug(`Successfully stopped track ${track.id}`);
       }

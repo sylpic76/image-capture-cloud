@@ -28,12 +28,6 @@ export async function handleMessageSubmission({
   networkStatus,
   useScreenshots
 }: HandleMessageParams): Promise<void> {
-  // Vérification de la connectivité réseau
-  if (networkStatus === 'offline') {
-    console.warn("Réseau hors ligne, tentative d'envoi quand même");
-    toast.warning("Connexion instable. Tentative d'envoi quand même...");
-  }
-
   // Vérification du projet
   if (!currentProject) {
     console.warn("Aucun projet spécifié, utilisation du projet par défaut");
@@ -88,7 +82,6 @@ export async function handleMessageSubmission({
         name: error.name,
         message: error.message,
         stack: error.stack,
-        // Fix: Remove cause property which requires ES2022
       });
     }
     
