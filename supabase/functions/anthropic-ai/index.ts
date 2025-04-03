@@ -14,7 +14,7 @@ import {
   logBug,
   detectAndSaveInsights 
 } from "./memory-enrichment.ts";
-import { processGeminiRequest } from "./ai-service.ts";
+import { processAnthropicRequest } from "./ai-service.ts";
 import { buildSystemPrompt, formatMemoryContext } from "./prompt-builder.ts";
 
 serve(async (req) => {
@@ -68,7 +68,7 @@ serve(async (req) => {
     let userMessage = message;
     
     if (screenshot && screenshot.length > 0) {
-      console.log("Screenshot detected, processing image for Gemini Vision API");
+      console.log("Screenshot detected, processing image for Claude Vision API");
       imageProcessed = true;
       
       // Save screenshot to snapshots
@@ -79,8 +79,8 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(userProfile, project, memoryContextText);
     
     try {
-      // Process the request with Gemini
-      const assistantResponse = await processGeminiRequest(
+      // Process the request with Anthropic's Claude API
+      const assistantResponse = await processAnthropicRequest(
         systemPrompt, 
         userMessage, 
         screenshot
@@ -95,7 +95,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           response: assistantResponse,
-          model: "gemini-1.5-pro",
+          model: "claude-3-opus-20240229",
           image_processed: imageProcessed
         }),
         { 
@@ -108,15 +108,15 @@ serve(async (req) => {
       );
       
     } catch (aiError) {
-      console.error(`Gemini API error: ${aiError.message}`);
+      console.error(`Claude API error: ${aiError.message}`);
       
       // Log the error as a bug
-      await logBug(project.id, aiError.message, "Gemini API");
+      await logBug(project.id, aiError.message, "Claude API");
       
       return new Response(
         JSON.stringify({ 
           error: aiError.message,
-          response: `Erreur API Gemini: ${aiError.message}`
+          response: `Erreur API Claude: ${aiError.message}`
         }),
         { 
           status: 500, 

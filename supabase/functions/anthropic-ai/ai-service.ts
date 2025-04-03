@@ -1,58 +1,75 @@
 
-import { GEMINI_API_KEY, GEMINI_API_URL } from "./config.ts";
+import { ANTHROPIC_API_KEY, ANTHROPIC_API_URL } from "./config.ts";
 
-export async function processGeminiRequest(systemPrompt: string, userMessage: string, screenshot: string | null) {
-  console.log("Sending request to Gemini API...");
-  console.log(`API URL: ${GEMINI_API_URL}`);
+export async function processAnthropicRequest(systemPrompt: string, userMessage: string, screenshot: string | null) {
+  console.log("Sending request to Anthropic API...");
+  console.log(`API URL: ${ANTHROPIC_API_URL}`);
   
-  // Format de requête pour l'API Gemini v1beta avec support d'image
-  const geminiRequestPayload = {
-    model: "gemini-1.5-pro",
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { text: systemPrompt + "\n\n" + userMessage }
-        ]
-      }
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 2000,
+  // Build the messages array for Claude API
+  const messages = [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: systemPrompt + "\n\n" + userMessage }
+      ]
     }
-  };
+  ];
   
-  // Ajouter l'image si elle est fournie
+  // Add the image if provided
   if (screenshot && screenshot.length > 0) {
-    // Modifier la requête pour inclure l'image
-    geminiRequestPayload.contents[0].parts.push({
-      inlineData: {
-        data: screenshot.replace(/^data:image\/(png|jpeg|jpg);base64,/, ''), // Enlever le préfixe data:image si présent
-        mimeType: screenshot.startsWith('data:image/png') ? "image/png" : "image/jpeg"
+    // Claude requires base64 images without the prefix
+    const base64Image = screenshot.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+    
+    // Add the image to the first user message's content
+    messages[0].content.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: screenshot.startsWith('data:image/png') ? "image/png" : "image/jpeg",
+        data: base64Image
       }
     });
+    
+    console.log("Added image to the request");
   }
   
-  console.log(`API request payload preview:`, JSON.stringify(geminiRequestPayload).substring(0, 200) + "...");
+  // Build the complete request payload
+  const requestPayload = {
+    model: "claude-3-opus-20240229",
+    messages: messages,
+    max_tokens: 4096,
+    temperature: 0.7,
+    system: "You are an expert AI assistant specialized in helping developers with web applications."
+  };
   
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+  console.log(`API request payload preview:`, JSON.stringify(requestPayload).substring(0, 200) + "...");
+  
+  // Get API key from environment or config
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === "your-anthropic-key-will-be-set-via-env") {
+    throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in the Supabase dashboard or environment variables.");
+  }
+  
+  const response = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
     },
-    body: JSON.stringify(geminiRequestPayload),
+    body: JSON.stringify(requestPayload),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`Gemini API error (${response.status}):`, errorText);
-    throw new Error(`Gemini API responded with ${response.status}: ${errorText}`);
+    console.error(`Anthropic API error (${response.status}):`, errorText);
+    throw new Error(`Anthropic API responded with ${response.status}: ${errorText}`);
   }
 
   const data = await response.json();
-  console.log("Gemini API response received successfully");
+  console.log("Anthropic API response received successfully");
 
-  // Extract and return the assistant's response - Format corrigé pour la version v1beta
-  const assistantResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Problème avec la réponse de l'API.";
+  // Extract and return the assistant's response
+  const assistantResponse = data.content?.[0]?.text || "Problème avec la réponse de l'API.";
   return assistantResponse;
 }
