@@ -177,8 +177,10 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       
       setMessages(prevMessages => [...prevMessages, errorMessage]);
       
-      // Fix the network status check to avoid type comparison issues
+      // Create network message string separately to avoid type comparison issues
       let networkMessage = '';
+      
+      // Use a string comparison to check the network status
       if (networkStatus === 'offline') {
         networkMessage = 'Vérifiez votre connexion internet.';
       }
