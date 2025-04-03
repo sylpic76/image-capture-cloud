@@ -20,6 +20,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Fonction pour gérer les projets (créer ou récupérer)
 async function getOrCreateProject(projectName = "Default Project") {
+  console.log("🧠 Creating or fetching project:", projectName);
   try {
     // Check if project exists
     const { data: existingProject, error: fetchError } = await supabase
@@ -35,7 +36,7 @@ async function getOrCreateProject(projectName = "Default Project") {
     
     // If project exists, return it
     if (existingProject) {
-      console.log(`Project found: ${existingProject.id} - ${existingProject.name}`);
+      console.log(`✅ Project found: ${existingProject.id} - ${existingProject.name}`);
       return existingProject;
     }
     
@@ -47,14 +48,14 @@ async function getOrCreateProject(projectName = "Default Project") {
       .single();
     
     if (insertError) {
-      console.error("Error creating project:", insertError);
+      console.error("❌ Error creating project:", insertError);
       return null;
     }
     
-    console.log(`New project created: ${newProject.id} - ${newProject.name}`);
+    console.log(`✅ New project created: ${newProject.id} - ${newProject.name}`);
     return newProject;
   } catch (error) {
-    console.error("Error in getOrCreateProject:", error);
+    console.error("❌ Error in getOrCreateProject:", error);
     return null;
   }
 }
@@ -176,14 +177,26 @@ serve(async (req) => {
   }
 
   try {
-    // Parse the request body
-    const { message, screenshot, projectName } = await req.json();
+    // Parse the request body and log received parameters
+    const requestBody = await req.json();
+    console.log("📥 Received request body:", JSON.stringify({
+      message: requestBody.message ? "Message present (length: " + requestBody.message.length + ")" : "No message",
+      screenshot: requestBody.screenshot ? "Screenshot present" : "No screenshot",
+      projectName: requestBody.projectName || "Not provided",
+    }));
+    
+    const { message, screenshot, projectName } = requestBody;
+    
+    // Log project information
+    console.log("🏢 Project name received:", projectName || "Default Project");
     
     // Get or create the project
     const project = await getOrCreateProject(projectName || "Default Project");
     if (!project) {
       throw new Error("Failed to get or create project");
     }
+    
+    console.log(`🔍 Using project: ${project.id} - ${project.name}`);
     
     // Get user profile
     const userProfile = await getUserProfile();
@@ -425,7 +438,7 @@ ${memoryContextText}`;
     );
 
   } catch (error) {
-    console.error("Error in gemini-ai function:", error);
+    console.error("❌ Error in anthropic-ai function:", error);
     
     return new Response(
       JSON.stringify({ 
