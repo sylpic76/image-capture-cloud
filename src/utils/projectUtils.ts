@@ -13,18 +13,50 @@ export const exportProjectAsMarkdown = async (projectId: string): Promise<string
   try {
     console.log(`Exporting project with ID: ${projectId}`);
     
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-project?id=${projectId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
-      }
-    });
+    // Add retry mechanism for more resilience
+    let retries = 3;
+    let response;
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(`Erreur ${response.status}: ${errorData?.error || 'Erreur inconnue'}`);
+    while (retries > 0) {
+      try {
+        response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-project?id=${projectId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
+          cache: 'no-store',
+        });
+        
+        // If successful, break out of retry loop
+        if (response.ok) break;
+        
+        // If we get a 5xx error, retry
+        if (response.status >= 500) {
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+          console.log(`Retrying export... (${retries} attempts left)`);
+          continue;
+        }
+        
+        // For other errors, don't retry
+        break;
+      } catch (error) {
+        // Network errors should be retried
+        console.error('Network error during export fetch:', error);
+        retries--;
+        
+        if (retries <= 0) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log(`Retrying after network error... (${retries} attempts left)`);
+      }
+    }
+    
+    if (!response || !response.ok) {
+      const errorData = await response?.json().catch(() => null);
+      throw new Error(`Erreur ${response?.status}: ${errorData?.error || 'Erreur inconnue'}`);
     }
     
     const data = await response.json();
@@ -62,4 +94,26 @@ export const downloadMarkdown = (markdown: string, filename: string = "project-e
   }, 100);
   
   toast.success("Fichier téléchargé avec succès");
+};
+
+/**
+ * Helper function to check network connectivity
+ */
+export const checkNetworkConnectivity = async (): Promise<boolean> => {
+  try {
+    // Use a small request to check if we can reach the Supabase API
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/health?select=status`, {
+      method: 'HEAD',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      cache: 'no-store',
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Network connectivity check failed:', error);
+    return false;
+  }
 };

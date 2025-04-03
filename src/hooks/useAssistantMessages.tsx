@@ -1,23 +1,59 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { convertMessagesToJson, ImageProcessingStatus, Message } from '@/types/assistant';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
+import { fetchLatestScreenshot } from '@/utils/screenshotUtils';
+import { checkNetworkConnectivity } from '@/utils/projectUtils';
 
 export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
+  const [networkStatus, setNetworkStatus] = useState<'online' | 'offline' | 'uncertain'>('uncertain');
   
   // Nouveau state pour le nom du projet
   const [currentProject, setCurrentProject] = useState('Default Project');
+  
+  // Check network status on mount and periodically
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const isConnected = await checkNetworkConnectivity();
+      setNetworkStatus(isConnected ? 'online' : 'offline');
+    };
+    
+    // Check immediately on mount
+    checkNetwork();
+    
+    // Then check every 30 seconds
+    const interval = setInterval(checkNetwork, 30000);
+    
+    // Listen to browser's online/offline events
+    const handleOnline = () => setNetworkStatus('online');
+    const handleOffline = () => setNetworkStatus('offline');
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!input.trim()) return;
+    
+    // Pre-check network connectivity
+    if (networkStatus === 'offline') {
+      toast.error("Vous êtes hors ligne. Impossible de communiquer avec l'assistant.");
+      return;
+    }
     
     // Add user message to the chat
     const userMessage: Message = {
@@ -40,58 +76,94 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
         setImageProcessingStatus('processing');
         
         try {
-          // Attempt to get the latest screenshot
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/latest`, {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`Error fetching screenshot: ${response.status}`);
+          // Use the utility to get the latest screenshot
+          screenshotData = await fetchLatestScreenshot(setImageProcessingStatus);
+          
+          if (screenshotData) {
+            setImageProcessingStatus('success');
+          } else {
+            // If screenshot is null but no error was thrown, it's a silent failure
+            console.warn("Screenshot fetched but returned null or empty");
+            setImageProcessingStatus('error');
           }
-
-          const blob = await response.blob();
-          screenshotData = await blobToBase64(blob);
-          setImageProcessingStatus('success');
         } catch (error) {
           console.error('Error processing screenshot:', error);
           setImageProcessingStatus('error');
-          toast.error('Erreur lors du traitement de la capture d\'écran');
+          // Continue without screenshot rather than aborting the entire operation
+          toast.error('Erreur lors du traitement de la capture d\'écran. L\'assistant continuera sans image.');
         }
       }
 
-      // Call the AI function with the message and optional screenshot
-      const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: input,
-          screenshot: screenshotData,
-          projectName: currentProject // Envoyer le nom du projet
-        }),
-      });
+      // Retry logic for API call
+      const maxRetries = 3;
+      let retryCount = 0;
+      let success = false;
+      let aiResponseData;
       
-      if (!aiResponse.ok) {
-        throw new Error(`AI service responded with ${aiResponse.status}`);
+      while (retryCount < maxRetries && !success) {
+        try {
+          if (retryCount > 0) {
+            // Let the user know we're retrying
+            toast.info(`Tentative ${retryCount + 1}/${maxRetries} de connexion à l'assistant...`);
+          }
+          
+          // Call the AI function with the message and optional screenshot
+          const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+            },
+            body: JSON.stringify({
+              message: input,
+              screenshot: screenshotData,
+              projectName: currentProject // Send project name
+            }),
+          });
+          
+          if (!aiResponse.ok) {
+            const errorData = await aiResponse.json().catch(() => null);
+            console.error(`AI Response error (${aiResponse.status}):`, errorData);
+            
+            // Server errors (5xx) are retriable
+            if (aiResponse.status >= 500 && retryCount < maxRetries - 1) {
+              retryCount++;
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+              continue;
+            }
+            
+            throw new Error(`AI service responded with ${aiResponse.status}: ${errorData?.error || 'Unknown error'}`);
+          }
+          
+          aiResponseData = await aiResponse.json();
+          success = true;
+          
+        } catch (error) {
+          console.error('Error in API call:', error);
+          
+          // For network errors, retry
+          if (error.message.includes('Failed to fetch') && retryCount < maxRetries - 1) {
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+            continue;
+          }
+          
+          throw error;
+        }
       }
-      
-      const data = await aiResponse.json();
       
       // Add assistant response to the messages
       const assistantMessage: Message = {
         id: uuidv4(),
         role: 'assistant',
-        content: data.response || 'Je n\'ai pas pu générer de réponse. Veuillez réessayer.',
+        content: aiResponseData?.response || 'Je n\'ai pas pu générer de réponse. Veuillez réessayer.',
         timestamp: new Date(),
       };
       
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
+      
     } catch (error: any) {
       console.error('Error in handleSubmit:', error);
       
@@ -104,27 +176,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       };
       
       setMessages(prevMessages => [...prevMessages, errorMessage]);
-      toast.error('Erreur lors de la communication avec l\'assistant');
+      toast.error(`Erreur de communication avec l'assistant. ${networkStatus === 'offline' ? 'Vérifiez votre connexion internet.' : ''}`);
     } finally {
       setIsLoading(false);
       setImageProcessingStatus('idle');
     }
-  };
-
-  // Helper function to convert blob to base64
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('Could not convert blob to base64'));
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   };
   
   const saveConversation = async () => {
@@ -135,7 +191,8 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       console.log('Saving conversation to Supabase:', messages);
       
       const { error } = await supabase.from('conversations').insert({
-        messages: convertMessagesToJson(messages)
+        messages: convertMessagesToJson(messages),
+        project_name: currentProject
       });
       
       if (error) throw error;
@@ -161,7 +218,8 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     saveConversation,
     clearConversation,
     imageProcessingStatus,
-    currentProject,    // Exposer le projet courant
-    setCurrentProject  // Permet de modifier le projet courant
+    currentProject,
+    setCurrentProject,
+    networkStatus
   };
 };

@@ -29,7 +29,8 @@ const UnifiedApp = () => {
     clearConversation,
     imageProcessingStatus,
     currentProject,
-    setCurrentProject
+    setCurrentProject,
+    networkStatus
   } = useAssistantMessages(useScreenshots);
   
   const [latestScreenshot, setLatestScreenshot] = useState<string | null>(null);
@@ -128,6 +129,7 @@ const UnifiedApp = () => {
         sdkDisabled={sdkDisabled}
         currentProject={currentProject}
         setCurrentProject={setCurrentProject}
+        networkStatus={networkStatus}
       />
     );
   }
@@ -163,6 +165,7 @@ const UnifiedApp = () => {
           imageProcessingStatus={imageProcessingStatus}
           currentProject={currentProject}
           setCurrentProject={setCurrentProject}
+          networkStatus={networkStatus}
         />
       </div>
       

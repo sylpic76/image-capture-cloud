@@ -33,6 +33,7 @@ interface MobileTabViewProps {
   sdkDisabled?: boolean;
   currentProject?: string;
   setCurrentProject?: (project: string) => void;
+  networkStatus?: 'online' | 'offline' | 'uncertain';
 }
 
 const MobileTabView = ({
@@ -59,7 +60,8 @@ const MobileTabView = ({
   getDiagnostics,
   sdkDisabled = true,
   currentProject,
-  setCurrentProject
+  setCurrentProject,
+  networkStatus = 'uncertain'
 }: MobileTabViewProps) => {
   return (
     <div className="container mx-auto px-4 py-6">
@@ -122,6 +124,7 @@ const MobileTabView = ({
               setUseScreenshots={setUseScreenshots}
               currentProject={currentProject}
               setCurrentProject={setCurrentProject}
+              networkStatus={networkStatus}
             />
             
             <CardContent className="flex-grow pb-0 overflow-hidden">
