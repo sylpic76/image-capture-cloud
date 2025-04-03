@@ -1,4 +1,3 @@
-
 import { useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ScreenCaptureStatus, ScreenCaptureConfig } from './screenCapture/types';
@@ -9,7 +8,7 @@ import { useTimer } from './screenCapture/useTimer';
 import { useCaptureState } from './screenCapture/useCaptureState';
 import { useMediaStream } from './screenCapture/useMediaStream';
 import { useDiagnostics } from './screenCapture/useDiagnostics';
-import { setupNetworkMonitor } from './screenCapture/networkMonitor';
+import { setupNetworkMonitor } from './screenCapture/network';
 
 // Set the default interval to 10 seconds (10000ms)
 export const useScreenCapture = (intervalSeconds = 10, config = defaultConfig) => {
