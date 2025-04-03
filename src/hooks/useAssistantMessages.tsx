@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { ImageProcessingStatus } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
 import { useNetworkStatus } from './useNetworkStatus';
@@ -11,6 +12,18 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
 
   // On récupère l'état du réseau mais on ne bloque pas l'envoi des messages
   const networkStatus = useNetworkStatus();
+  
+  // Vérification des variables d'environnement au chargement
+  useState(() => {
+    // Vérifier si les variables d'environnement critiques sont présentes
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.error("Variables d'environnement manquantes pour l'assistant IA");
+      toast.error("Configuration incomplète", {
+        description: "Vérifiez les variables d'environnement VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY",
+        duration: 10000
+      });
+    }
+  });
 
   const {
     messages,

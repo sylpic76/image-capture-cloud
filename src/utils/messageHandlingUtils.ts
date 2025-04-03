@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { ImageProcessingStatus } from '@/types/assistant';
 import { fetchLatestScreenshot } from './screenshotUtils';
 import { sendMessageToAI } from './conversationUtils';
+import { NetworkStatus } from '@/hooks/useNetworkStatus';
 
 interface HandleMessageParams {
   input: string;
@@ -12,7 +13,7 @@ interface HandleMessageParams {
   addErrorMessage: (error: any) => void;
   setIsLoading: (isLoading: boolean) => void;
   setImageProcessingStatus: (status: ImageProcessingStatus) => void;
-  networkStatus: 'online' | 'offline' | 'uncertain';
+  networkStatus: NetworkStatus;
   useScreenshots: boolean;
 }
 
@@ -61,7 +62,16 @@ export async function handleMessageSubmission({
       }
     }
 
+    // Vérification de la valeur des variables d'environnement (en masquant les valeurs sensibles)
+    console.log("[Assistant] Vérification des variables d'environnement:");
+    console.log(`VITE_SUPABASE_URL: ${import.meta.env.VITE_SUPABASE_URL ? "Définie" : "Non définie"}`);
+    console.log(`VITE_SUPABASE_ANON_KEY: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? "Définie (longueur: " + import.meta.env.VITE_SUPABASE_ANON_KEY.length + ")" : "Non définie"}`);
+
     console.log("[Assistant] Envoi du message à l'API assistant");
+    // Vérifier que l'URL complète est correcte
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`;
+    console.log(`[Assistant] URL de l'API: ${apiUrl}`);
+    
     const aiResponseData = await sendMessageToAI(input, screenshotData, currentProject);
     console.log(`[Assistant] Réponse reçue (${aiResponseData.response.length} caractères)`);
     addAssistantMessage(aiResponseData.response);
@@ -85,12 +95,15 @@ export async function handleMessageSubmission({
     let errorMessage = "Erreur de communication. Réessayez dans quelques instants.";
     
     if (error.message?.includes('Failed to fetch')) {
-      errorMessage = `Erreur de connexion au serveur. L'application essaiera de se reconnecter automatiquement.`;
+      errorMessage = `Erreur de connexion au serveur. Vérifiez que la fonction Edge "anthropic-ai" est déployée et active.`;
+      toast.error(errorMessage, {
+        description: "URL: " + import.meta.env.VITE_SUPABASE_URL + "/functions/v1/anthropic-ai",
+        duration: 7000,
+      });
     } else if (error.message) {
       errorMessage = `Erreur: ${error.message}`;
+      toast.error(errorMessage);
     }
-    
-    toast.error(errorMessage);
   } finally {
     setIsLoading(false);
     setImageProcessingStatus('idle');

@@ -44,7 +44,19 @@ export const sendMessageToAI = async (
   projectName: string = 'Default Project'
 ): Promise<{ response: string; image_processed?: boolean }> => {
   console.log("Calling AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
-  console.log("Using endpoint:", `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`);
+  const apiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`;
+  console.log("Using endpoint:", apiEndpoint);
+  
+  // Vérifier que les variables d'environnement sont définies
+  if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    console.error("Variables d'environnement manquantes:");
+    console.error(`VITE_SUPABASE_URL: ${import.meta.env.VITE_SUPABASE_URL ? "OK" : "MANQUANTE"}`);
+    console.error(`VITE_SUPABASE_ANON_KEY: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? "OK" : "MANQUANTE"}`);
+    
+    return {
+      response: "Erreur de configuration: Variables d'environnement manquantes. Veuillez vérifier le fichier .env."
+    };
+  }
   
   const maxRetries = 3;
   let retryCount = 0;
@@ -53,6 +65,7 @@ export const sendMessageToAI = async (
     try {
       if (retryCount > 0) {
         console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
+        toast.info(`Nouvelle tentative de connexion (${retryCount + 1}/${maxRetries})...`);
       }
       
       // Création de l'objet Request pour plus de détails dans les logs
@@ -86,7 +99,7 @@ export const sendMessageToAI = async (
       // Mesurer le temps de la requête
       const startTime = performance.now();
       
-      const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, requestInit);
+      const aiResponse = await fetch(apiEndpoint, requestInit);
       
       const endTime = performance.now();
       console.log(`AI response received in ${Math.round(endTime - startTime)}ms with status: ${aiResponse.status}`);
@@ -112,25 +125,52 @@ export const sendMessageToAI = async (
         // Erreur CORS possible
         if (aiResponse.type === 'opaque' || aiResponse.status === 0) {
           console.error("Possible CORS error or network issue");
+          toast.error("Erreur CORS ou problème réseau", {
+            description: "Vérifiez la configuration des fonctions Edge de Supabase",
+            duration: 7000
+          });
           return { 
-            response: `Erreur réseau: Problème possible de CORS ou de connexion. Vérifiez le réseau et la configuration de l'API.` 
+            response: `Erreur réseau: Problème possible de CORS ou de connexion. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et configurée pour accepter les requêtes CORS.` 
           };
         }
         
         // Erreurs spécifiques
         if (aiResponse.status === 413) {
+          toast.error("Requête trop volumineuse", {
+            description: "L'image est peut-être trop grande"
+          });
           return { 
             response: `Erreur: Requête trop volumineuse. La capture d'écran est peut-être trop grande.` 
           };
         } else if (aiResponse.status === 429) {
+          toast.error("Limite de requêtes dépassée", {
+            description: "Attendez quelques minutes"
+          });
           return { 
             response: `Erreur: Limite de requêtes dépassée. Veuillez réessayer dans quelques minutes.` 
           };
         }
         
+        // Message d'erreur personnalisé selon le code HTTP
+        const statusMessages: Record<number, string> = {
+          401: "Erreur d'authentification. Vérifiez votre clé d'API.",
+          403: "Accès refusé. Vérifiez les permissions de la fonction Edge.",
+          404: "Fonction Edge non trouvée. Vérifiez que 'anthropic-ai' est correctement déployée."
+        };
+        
+        const errorMsg = statusMessages[aiResponse.status] || 
+                         errorData?.error || 
+                         errorData?.response || 
+                         `Statut HTTP ${aiResponse.status}`;
+                         
+        toast.error(`Erreur API: ${errorMsg}`, {
+          description: `Endpoint: ${apiEndpoint.split('/').slice(-2).join('/')}`,
+          duration: 7000
+        });
+        
         // Retourner le message d'erreur
         return { 
-          response: `Erreur: ${errorData?.error || errorData?.response || JSON.stringify(errorData) || `Statut HTTP ${aiResponse.status}`}` 
+          response: `Erreur: ${errorMsg}. Vérifiez la console pour plus de détails.` 
         };
       }
       
@@ -141,6 +181,9 @@ export const sendMessageToAI = async (
         return responseData;
       } catch (jsonError) {
         console.error("Failed to parse AI response as JSON:", jsonError);
+        toast.error("Erreur de format de réponse", {
+          description: "La réponse n'est pas au format JSON attendu"
+        });
         return { response: `Erreur: La réponse du serveur n'est pas au format JSON attendu.` };
       }
       
@@ -157,6 +200,11 @@ export const sendMessageToAI = async (
           error: error.toString(),
           stack: error.stack
         });
+        
+        toast.error("Erreur de connexion", {
+          description: "Impossible de contacter la fonction Edge 'anthropic-ai'",
+          duration: 7000
+        });
       }
       
       // Network errors should be retried
@@ -168,13 +216,17 @@ export const sendMessageToAI = async (
       
       // Return the error message
       return { 
-        response: `Erreur de connexion: ${error.message}. Vérifiez votre connexion internet et réessayez.` 
+        response: `Erreur de connexion: ${error.message}. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et active.` 
       };
     }
   }
   
   // If we've exhausted all retries
+  toast.error("Échec après plusieurs tentatives", {
+    description: "Vérifiez l'état des fonctions Edge Supabase"
+  });
+  
   return { 
-    response: `Erreur: Impossible de contacter le serveur après ${maxRetries} tentatives. Vérifiez votre connexion et réessayez plus tard.` 
+    response: `Erreur: Impossible de contacter le serveur après ${maxRetries} tentatives. Vérifiez que la fonction Edge "anthropic-ai" est active et correctement configurée.` 
   };
 };
