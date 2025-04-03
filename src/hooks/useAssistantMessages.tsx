@@ -50,8 +50,8 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     if (!input.trim()) return;
     
     // Pre-check network connectivity
-    if (networkStatus === 'offline') {
-      toast.error("Vous êtes hors ligne. Impossible de communiquer avec l'assistant.");
+    if (networkStatus !== 'online') {
+      toast.error("Connexion instable ou hors-ligne. Impossible de communiquer avec l'assistant.");
       return;
     }
     
@@ -176,8 +176,13 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       };
       
       setMessages(prevMessages => [...prevMessages, errorMessage]);
-      // Fix the type comparison issue by creating the network message separately
-      const networkMessage = networkStatus === 'offline' ? 'Vérifiez votre connexion internet.' : '';
+      
+      // Fix the network status check to avoid type comparison issues
+      let networkMessage = '';
+      if (networkStatus === 'offline') {
+        networkMessage = 'Vérifiez votre connexion internet.';
+      }
+      
       toast.error(`Erreur de communication avec l'assistant. ${networkMessage}`);
     } finally {
       setIsLoading(false);
