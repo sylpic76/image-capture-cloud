@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImageProcessingStatus } from '@/types/assistant';
-import { useConversationState } from './useConversationState';
+import { useConversationState } from '@/hooks/screenCapture/useConversationState';
 import { toast } from 'sonner';
 import { fetchLatestScreenshot } from '@/utils/screenshotUtils';
 import { sendMessageToAI } from '@/utils/conversationUtils';
@@ -32,22 +32,24 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     setIsLoading(true);
 
     try {
-      let screenshotData: string | null = null;
+      let screenshotData = null;
 
       if (useScreenshots) {
         setImageProcessingStatus('processing');
+
         try {
           screenshotData = await fetchLatestScreenshot(setImageProcessingStatus);
 
           if (screenshotData) {
             setImageProcessingStatus('success');
           } else {
+            console.warn("Screenshot fetched but returned null or empty");
             setImageProcessingStatus('error');
           }
         } catch (error) {
-          console.error('Erreur capture écran:', error);
+          console.error('Error processing screenshot:', error);
           setImageProcessingStatus('error');
-          toast.error('Erreur sur la capture. L’assistant continue sans image.');
+          toast.error('Erreur lors du traitement de la capture d\'écran. L\'assistant continuera sans image.');
         }
       }
 
@@ -55,9 +57,9 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       addAssistantMessage(aiResponseData.response);
 
     } catch (error: any) {
-      console.error('Erreur assistant:', error);
+      console.error('Error in handleSubmit:', error);
       addErrorMessage(error);
-      toast.error(`Erreur assistant : ${error.message || 'Problème inconnu.'}`);
+      toast.error(`Erreur de communication avec l'assistant.`);
     } finally {
       setIsLoading(false);
       setImageProcessingStatus('idle');
