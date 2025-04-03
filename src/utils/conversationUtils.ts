@@ -43,19 +43,41 @@ export const sendMessageToAI = async (
   screenshotBase64: string | null,
   projectName: string = 'Default Project'
 ): Promise<{ response: string; image_processed?: boolean }> => {
-  console.log("Calling AI with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
-  const apiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`;
-  console.log("Using endpoint:", apiEndpoint);
-  
-  // Vérifier que les variables d'environnement sont définies
+  // Vérifiez que les variables d'environnement sont définies
   if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
     console.error("Variables d'environnement manquantes:");
     console.error(`VITE_SUPABASE_URL: ${import.meta.env.VITE_SUPABASE_URL ? "OK" : "MANQUANTE"}`);
     console.error(`VITE_SUPABASE_ANON_KEY: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? "OK" : "MANQUANTE"}`);
     
+    toast.error("Configuration incomplète", {
+      description: "Vérifiez les variables d'environnement dans votre fichier .env",
+      duration: 7000
+    });
+    
     return {
       response: "Erreur de configuration: Variables d'environnement manquantes. Veuillez vérifier le fichier .env."
     };
+  }
+  
+  // Construire l'URL de l'API
+  const apiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`;
+  console.log(`[Assistant] Envoi vers: ${apiEndpoint}`);
+  console.log(`[Assistant] Données: screenshot=${screenshotBase64 ? "oui" : "non"}, projet="${projectName}"`);
+  
+  // Test de connectivité
+  try {
+    const online = navigator.onLine;
+    console.log(`[Assistant] État réseau: ${online ? "En ligne" : "Hors ligne"}`);
+    if (!online) {
+      toast.error("Pas de connexion Internet", {
+        description: "Vérifiez votre connexion et réessayez"
+      });
+      return { 
+        response: "Erreur: Pas de connexion Internet. Veuillez vérifier votre connectivité et réessayer."
+      };
+    }
+  } catch (e) {
+    console.log("[Assistant] Impossible de vérifier l'état du réseau:", e);
   }
   
   const maxRetries = 3;
@@ -64,8 +86,10 @@ export const sendMessageToAI = async (
   while (retryCount < maxRetries) {
     try {
       if (retryCount > 0) {
-        console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
+        console.log(`[Assistant] Tentative ${retryCount + 1}/${maxRetries}`);
         toast.info(`Nouvelle tentative de connexion (${retryCount + 1}/${maxRetries})...`);
+        // Attente exponentielle entre les tentatives
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount - 1)));
       }
       
       // Création de l'objet Request pour plus de détails dans les logs
@@ -86,83 +110,72 @@ export const sendMessageToAI = async (
         cache: 'no-store'
       };
       
-      console.log("Request headers:", Object.fromEntries(
-        Object.entries(requestInit.headers as Record<string, string>)
-          .filter(([key]) => !['Authorization', 'apikey'].includes(key)) // Masquer les clés sensibles
-      ));
+      // Masquer les informations sensibles dans les logs
+      const safeHeadersLog = { ...requestInit.headers };
+      delete (safeHeadersLog as any).Authorization;
+      delete (safeHeadersLog as any).apikey;
       
-      console.log("Request payload size:", 
+      console.log("[Assistant] En-têtes de requête:", safeHeadersLog);
+      console.log("[Assistant] Taille du payload:", 
         Math.round((requestInit.body as string).length / 1024), 
-        "KB (message:", input.trim().length, "chars",
-        screenshotBase64 ? ", screenshot: ~" + Math.round(screenshotBase64.length / 1024) + "KB)" : ", no screenshot)");
+        "KB (message:", input.trim().length, "caractères",
+        screenshotBase64 ? ", screenshot: ~" + Math.round(screenshotBase64.length / 1024) + "KB)" : ", pas de screenshot)");
       
       // Mesurer le temps de la requête
       const startTime = performance.now();
       
-      const aiResponse = await fetch(apiEndpoint, requestInit);
+      // Exécution de la requête avec un timeout
+      const timeoutPromise = new Promise<Response>((_, reject) => {
+        setTimeout(() => reject(new Error("Timeout de la requête après 30 secondes")), 30000);
+      });
+      
+      const fetchPromise = fetch(apiEndpoint, requestInit);
+      const aiResponse = await Promise.race([fetchPromise, timeoutPromise]);
       
       const endTime = performance.now();
-      console.log(`AI response received in ${Math.round(endTime - startTime)}ms with status: ${aiResponse.status}`);
+      console.log(`[Assistant] Réponse reçue en ${Math.round(endTime - startTime)}ms avec statut: ${aiResponse.status}`);
       
       if (!aiResponse.ok) {
         // Tentative de récupération des détails de l'erreur si disponibles
         let errorData;
         try {
           errorData = await aiResponse.json();
-          console.error("AI Response error details:", errorData);
+          console.error("[Assistant] Détails de l'erreur API:", errorData);
         } catch (jsonError) {
-          console.error("AI Response error (could not parse JSON):", await aiResponse.text().catch(() => null));
+          const textResponse = await aiResponse.text().catch(() => null);
+          console.error("[Assistant] Erreur API (non-JSON):", textResponse);
         }
         
         // Server errors (5xx) sont réessayables
         if (aiResponse.status >= 500 && retryCount < maxRetries - 1) {
-          console.warn(`Server error ${aiResponse.status}, will retry (${retryCount + 1}/${maxRetries - 1})`);
+          console.warn(`[Assistant] Erreur serveur ${aiResponse.status}, nouvelle tentative (${retryCount + 1}/${maxRetries - 1})`);
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Backoff exponentiel
           continue;
         }
         
         // Erreur CORS possible
         if (aiResponse.type === 'opaque' || aiResponse.status === 0) {
-          console.error("Possible CORS error or network issue");
-          toast.error("Erreur CORS ou problème réseau", {
-            description: "Vérifiez la configuration des fonctions Edge de Supabase",
+          console.error("[Assistant] Possible erreur CORS ou problème réseau");
+          toast.error("Erreur de communication", {
+            description: "Problème de CORS ou de connexion à la fonction Edge",
             duration: 7000
           });
           return { 
-            response: `Erreur réseau: Problème possible de CORS ou de connexion. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et configurée pour accepter les requêtes CORS.` 
+            response: `Erreur réseau: Problème de CORS ou de connexion. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et configurée.` 
           };
         }
         
-        // Erreurs spécifiques
-        if (aiResponse.status === 413) {
-          toast.error("Requête trop volumineuse", {
-            description: "L'image est peut-être trop grande"
-          });
-          return { 
-            response: `Erreur: Requête trop volumineuse. La capture d'écran est peut-être trop grande.` 
-          };
-        } else if (aiResponse.status === 429) {
-          toast.error("Limite de requêtes dépassée", {
-            description: "Attendez quelques minutes"
-          });
-          return { 
-            response: `Erreur: Limite de requêtes dépassée. Veuillez réessayer dans quelques minutes.` 
-          };
-        }
-        
-        // Message d'erreur personnalisé selon le code HTTP
+        // Messages d'erreur personnalisés selon le code HTTP
         const statusMessages: Record<number, string> = {
-          401: "Erreur d'authentification. Vérifiez votre clé d'API.",
+          401: "Erreur d'authentification. Vérifiez votre clé d'API Supabase.",
           403: "Accès refusé. Vérifiez les permissions de la fonction Edge.",
           404: "Fonction Edge non trouvée. Vérifiez que 'anthropic-ai' est correctement déployée."
         };
         
         const errorMsg = statusMessages[aiResponse.status] || 
-                         errorData?.error || 
-                         errorData?.response || 
-                         `Statut HTTP ${aiResponse.status}`;
-                         
+                        (errorData?.error || errorData?.response || 
+                        `Statut HTTP ${aiResponse.status}`);
+                        
         toast.error(`Erreur API: ${errorMsg}`, {
           description: `Endpoint: ${apiEndpoint.split('/').slice(-2).join('/')}`,
           duration: 7000
@@ -177,10 +190,24 @@ export const sendMessageToAI = async (
       // Analyser la réponse JSON
       try {
         const responseData = await aiResponse.json();
-        console.log("AI response structure:", Object.keys(responseData).join(', '));
-        return responseData;
+        console.log("[Assistant] Structure de la réponse:", Object.keys(responseData).join(', '));
+        if (!responseData.response && !responseData.generatedText) {
+          console.error("[Assistant] Format de réponse inattendu:", responseData);
+          toast.error("Format de réponse inattendu", {
+            description: "L'API a renvoyé une réponse dans un format non reconnu"
+          });
+          return { 
+            response: "Erreur: Format de réponse inattendu de l'API. Veuillez vérifier les journaux."
+          };
+        }
+        
+        // Compatibilité avec différents formats de réponse
+        return {
+          response: responseData.response || responseData.generatedText || "Réponse vide",
+          image_processed: !!responseData.image_processed
+        };
       } catch (jsonError) {
-        console.error("Failed to parse AI response as JSON:", jsonError);
+        console.error("[Assistant] Échec d'analyse de la réponse JSON:", jsonError);
         toast.error("Erreur de format de réponse", {
           description: "La réponse n'est pas au format JSON attendu"
         });
@@ -188,11 +215,11 @@ export const sendMessageToAI = async (
       }
       
     } catch (error) {
-      console.error("Error sending message to AI:", error);
+      console.error("[Assistant] Erreur lors de l'envoi du message:", error);
       
       // Détailler l'erreur réseau
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        console.error("Network error details:", {
+        console.error("[Assistant] Détails de l'erreur réseau:", {
           navigator: {
             onLine: navigator.onLine,
             userAgent: navigator.userAgent,
@@ -201,27 +228,30 @@ export const sendMessageToAI = async (
           stack: error.stack
         });
         
-        toast.error("Erreur de connexion", {
-          description: "Impossible de contacter la fonction Edge 'anthropic-ai'",
-          duration: 7000
-        });
+        if (retryCount === 0) {
+          toast.error("Erreur de connexion", {
+            description: "Impossible de contacter la fonction Edge 'anthropic-ai'",
+            duration: 7000
+          });
+        }
       }
       
-      // Network errors should be retried
-      if (error instanceof TypeError && error.message.includes('Failed to fetch') && retryCount < maxRetries - 1) {
+      // Les erreurs de connexion doivent être réessayées
+      if (error instanceof TypeError && 
+         (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('Timeout')) && 
+         retryCount < maxRetries - 1) {
         retryCount++;
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
         continue;
       }
       
-      // Return the error message
+      // Retourner le message d'erreur
       return { 
         response: `Erreur de connexion: ${error.message}. Vérifiez que la fonction Edge "anthropic-ai" est correctement déployée et active.` 
       };
     }
   }
   
-  // If we've exhausted all retries
+  // Si on a épuisé toutes les tentatives
   toast.error("Échec après plusieurs tentatives", {
     description: "Vérifiez l'état des fonctions Edge Supabase"
   });

@@ -28,11 +28,16 @@ export async function handleMessageSubmission({
   networkStatus,
   useScreenshots
 }: HandleMessageParams): Promise<void> {
-  // Affiche un avertissement au lieu de bloquer complètement l'envoi
+  // Vérification de la connectivité réseau
   if (networkStatus === 'offline') {
     console.warn("Réseau hors ligne, tentative d'envoi quand même");
     toast.warning("Connexion instable. Tentative d'envoi quand même...");
-    // On continue l'exécution au lieu de bloquer
+  }
+
+  // Vérification du projet
+  if (!currentProject) {
+    console.warn("Aucun projet spécifié, utilisation du projet par défaut");
+    toast.info("Projet par défaut utilisé");
   }
 
   console.log(`[Assistant] Envoi de message: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}" (réseau: ${networkStatus})`);
@@ -67,14 +72,17 @@ export async function handleMessageSubmission({
     console.log(`VITE_SUPABASE_URL: ${import.meta.env.VITE_SUPABASE_URL ? "Définie" : "Non définie"}`);
     console.log(`VITE_SUPABASE_ANON_KEY: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? "Définie (longueur: " + import.meta.env.VITE_SUPABASE_ANON_KEY.length + ")" : "Non définie"}`);
 
+    // Tentative d'envoi du message à l'assistant
     console.log("[Assistant] Envoi du message à l'API assistant");
-    // Vérifier que l'URL complète est correcte
-    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`;
-    console.log(`[Assistant] URL de l'API: ${apiUrl}`);
-    
     const aiResponseData = await sendMessageToAI(input, screenshotData, currentProject);
-    console.log(`[Assistant] Réponse reçue (${aiResponseData.response.length} caractères)`);
-    addAssistantMessage(aiResponseData.response);
+    
+    if (aiResponseData.response) {
+      console.log(`[Assistant] Réponse reçue (${aiResponseData.response.length} caractères)`);
+      addAssistantMessage(aiResponseData.response);
+    } else {
+      console.error("[Assistant] Réponse vide ou invalide");
+      throw new Error("Réponse vide ou invalide reçue de l'assistant");
+    }
 
   } catch (error: any) {
     console.error('[Assistant] Erreur assistant:', error);
@@ -91,18 +99,20 @@ export async function handleMessageSubmission({
     
     addErrorMessage(error);
     
-    // Message d'erreur plus détaillé et sans bloquer l'utilisateur
+    // Message d'erreur plus détaillé
     let errorMessage = "Erreur de communication. Réessayez dans quelques instants.";
     
     if (error.message?.includes('Failed to fetch')) {
       errorMessage = `Erreur de connexion au serveur. Vérifiez que la fonction Edge "anthropic-ai" est déployée et active.`;
       toast.error(errorMessage, {
         description: "URL: " + import.meta.env.VITE_SUPABASE_URL + "/functions/v1/anthropic-ai",
-        duration: 7000,
+        duration: 10000,
       });
     } else if (error.message) {
       errorMessage = `Erreur: ${error.message}`;
-      toast.error(errorMessage);
+      toast.error(errorMessage, {
+        duration: 7000
+      });
     }
   } finally {
     setIsLoading(false);

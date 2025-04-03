@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ImageProcessingStatus } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
@@ -10,11 +10,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
 
-  // On récupère l'état du réseau mais on ne bloque pas l'envoi des messages
+  // On récupère l'état du réseau
   const networkStatus = useNetworkStatus();
   
   // Vérification des variables d'environnement au chargement
-  useState(() => {
+  useEffect(() => {
     // Vérifier si les variables d'environnement critiques sont présentes
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
       console.error("Variables d'environnement manquantes pour l'assistant IA");
@@ -22,8 +22,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
         description: "Vérifiez les variables d'environnement VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY",
         duration: 10000
       });
+    } else {
+      console.log("[Assistant] Variables d'environnement vérifiées ✓");
+      console.log(`[Assistant] URL API: ${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`);
     }
-  });
+  }, []);
 
   const {
     messages,
