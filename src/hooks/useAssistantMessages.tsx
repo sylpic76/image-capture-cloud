@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { ImageProcessingStatus } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
@@ -10,7 +11,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
 
-  const networkStatus = useNetworkStatus(); // ← tu peux même supprimer ça si inutilisé
+  const networkStatus = useNetworkStatus();
 
   const {
     messages,
@@ -30,6 +31,14 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
 
     if (!input.trim()) return;
 
+    // Vérifier le statut du réseau avant d'envoyer
+    if (networkStatus === 'offline') {
+      console.warn("Network is offline, cannot send message");
+      toast.error("Vous êtes hors ligne. Impossible d'envoyer le message à l'assistant.");
+      return;
+    }
+
+    console.log(`[Assistant] Envoi de message: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}" (réseau: ${networkStatus})`);
     addUserMessage(input);
     setInput('');
     setIsLoading(true);
@@ -38,32 +47,59 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       let screenshotData: string | null = null;
 
       if (useScreenshots) {
+        console.log("[Assistant] Tentative de récupération d'une capture d'écran");
         setImageProcessingStatus('processing');
         try {
           screenshotData = await fetchLatestScreenshot(setImageProcessingStatus);
 
           if (screenshotData) {
+            console.log("[Assistant] Capture d'écran récupérée avec succès");
             setImageProcessingStatus('success');
           } else {
+            console.warn("[Assistant] Aucune capture d'écran disponible");
             setImageProcessingStatus('error');
           }
         } catch (error) {
-          console.error('Erreur capture écran:', error);
+          console.error('[Assistant] Erreur capture écran:', error);
           setImageProcessingStatus('error');
           toast.error('Erreur capture écran. L\'assistant continue sans image.');
         }
       }
 
+      console.log("[Assistant] Envoi du message à l'API assistant");
       const aiResponseData = await sendMessageToAI(input, screenshotData, currentProject);
+      console.log(`[Assistant] Réponse reçue (${aiResponseData.response.length} caractères)`);
       addAssistantMessage(aiResponseData.response);
 
     } catch (error: any) {
-      console.error('Erreur assistant:', error);
+      console.error('[Assistant] Erreur assistant:', error);
+      
+      // Enregistrement détaillé des erreurs
+      if (error instanceof Error) {
+        console.error('[Assistant] Détails:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          cause: error.cause
+        });
+      }
+      
       addErrorMessage(error);
-      toast.error(`Erreur assistant. Détail: ${error.message || 'inconnu'}`);
+      
+      // Message d'erreur plus détaillé
+      let errorMessage = "Erreur assistant.";
+      
+      if (error.message?.includes('Failed to fetch')) {
+        errorMessage = `Erreur de connexion avec le serveur. Vérifiez votre connexion internet (Statut réseau: ${networkStatus}).`;
+      } else if (error.message) {
+        errorMessage = `Erreur: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
       setImageProcessingStatus('idle');
+      console.log("[Assistant] Traitement de la requête terminé");
     }
   };
 
@@ -78,6 +114,6 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     imageProcessingStatus,
     currentProject,
     setCurrentProject,
-    networkStatus // ← à supprimer ici aussi si t’en sers pas dans le UI
+    networkStatus
   };
 };

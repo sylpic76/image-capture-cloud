@@ -1,4 +1,3 @@
-
 // Import necessary modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
@@ -700,7 +699,7 @@ ${memoryContextText}`;
     console.log(`API URL: ${GEMINI_API_URL}`);
     
     // Format de requête pour l'API Gemini v1beta avec support d'image
-    const requestBody = {
+    const geminiRequestPayload = {
       model: "gemini-1.5-pro",
       contents: [
         {
@@ -719,7 +718,7 @@ ${memoryContextText}`;
     // Ajouter l'image si elle est fournie
     if (screenshot && screenshot.length > 0) {
       // Modifier la requête pour inclure l'image
-      requestBody.contents[0].parts.push({
+      geminiRequestPayload.contents[0].parts.push({
         inlineData: {
           data: screenshot.replace(/^data:image\/(png|jpeg|jpg);base64,/, ''), // Enlever le préfixe data:image si présent
           mimeType: screenshot.startsWith('data:image/png') ? "image/png" : "image/jpeg"
@@ -727,14 +726,14 @@ ${memoryContextText}`;
       });
     }
     
-    console.log(`API request payload preview:`, JSON.stringify(requestBody).substring(0, 200) + "...");
+    console.log(`API request payload preview:`, JSON.stringify(geminiRequestPayload).substring(0, 200) + "...");
     
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(geminiRequestPayload),
     });
 
     if (!response.ok) {

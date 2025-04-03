@@ -28,6 +28,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
 
     if (!input.trim()) return;
 
+    console.log(`[IndexPage] Envoi de message: "${input.substring(0, 30)}..."`);
     addUserMessage(input);
     setInput('');
     setIsLoading(true);
@@ -42,28 +43,43 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
           screenshotData = await fetchLatestScreenshot(setImageProcessingStatus);
 
           if (screenshotData) {
+            console.log("[IndexPage] Capture d'écran récupérée avec succès");
             setImageProcessingStatus('success');
           } else {
-            console.warn("Screenshot fetched but returned null or empty");
+            console.warn("[IndexPage] Screenshot fetched but returned null or empty");
             setImageProcessingStatus('error');
           }
         } catch (error) {
-          console.error('Error processing screenshot:', error);
+          console.error('[IndexPage] Error processing screenshot:', error);
           setImageProcessingStatus('error');
           toast.error('Erreur lors du traitement de la capture d\'écran. L\'assistant continuera sans image.');
         }
       }
 
+      console.log("[IndexPage] Envoi du message à l'API assistant");
       const aiResponseData = await sendMessageToAI(input, screenshotData, currentProject);
+      console.log(`[IndexPage] Réponse reçue de l'assistant (${aiResponseData.response.length} caractères)`);
       addAssistantMessage(aiResponseData.response);
 
     } catch (error: any) {
-      console.error('Error in handleSubmit:', error);
+      console.error('[IndexPage] Error in handleSubmit:', error);
+      
+      // Log détaillé de l'erreur
+      if (error instanceof Error) {
+        console.error('[IndexPage] Détails erreur:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          type: error.constructor.name
+        });
+      }
+      
       addErrorMessage(error);
       toast.error(`Erreur de communication avec l'assistant.`);
     } finally {
       setIsLoading(false);
       setImageProcessingStatus('idle');
+      console.log("[IndexPage] Traitement du message terminé");
     }
   };
 
