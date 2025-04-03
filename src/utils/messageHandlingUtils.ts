@@ -86,22 +86,6 @@ export async function handleMessageSubmission({
     }
     
     addErrorMessage(error);
-    
-    // Message d'erreur plus détaillé
-    let errorMessage = "Erreur de communication. Réessayez dans quelques instants.";
-    
-    if (error.message?.includes('Failed to fetch')) {
-      errorMessage = `Erreur de connexion au serveur. Vérifiez que la fonction Edge "anthropic-ai" est déployée et active.`;
-      toast.error(errorMessage, {
-        description: "URL: " + import.meta.env.VITE_SUPABASE_URL + "/functions/v1/anthropic-ai",
-        duration: 10000,
-      });
-    } else if (error.message) {
-      errorMessage = `Erreur: ${error.message}`;
-      toast.error(errorMessage, {
-        duration: 7000
-      });
-    }
   } finally {
     setIsLoading(false);
     setImageProcessingStatus('idle');
