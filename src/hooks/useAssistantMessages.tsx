@@ -144,7 +144,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
           console.error('Error in API call:', error);
           
           // For network errors, retry
-          if (error.message.includes('Failed to fetch') && retryCount < maxRetries - 1) {
+          if (error.message?.includes('Failed to fetch') && retryCount < maxRetries - 1) {
             retryCount++;
             await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
             continue;
