@@ -89,7 +89,7 @@ const ScreenCaptureSection = ({
       const url = URL.createObjectURL(blob);
       setLatestScreenshot(url);
       setLastRefreshTime(new Date());
-      toast.success("Capture d'écran récupérée avec succès");
+      // Suppression du toast de succès qui s'affiche régulièrement
     } catch (error) {
       console.error('Error:', error);
       toast.error("Impossible de récupérer la dernière capture d'écran");

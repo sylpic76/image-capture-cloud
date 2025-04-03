@@ -1,33 +1,41 @@
 
+import { handleFetchError, handleHttpError } from './errorHandling';
 import { createLogger } from '../logger';
-import { handleHttpError, handleFetchError } from './errorHandling';
-import { TokenRefreshManager } from './tokenRefresh';
 
-const { logDebug } = createLogger();
+const { logDebug, logError } = createLogger();
 
-// Setup fetch interceptor to monitor network requests
+// Fetch interceptor to monitor network requests
 export const setupFetchInterceptor = (): () => void => {
   const originalFetch = window.fetch;
-  const tokenManager = new TokenRefreshManager();
   
-  // Intercept all fetch requests
-  window.fetch = async (...args) => {
-    const url = args[0] ? String(args[0]) : '';
-    const isAssistantEndpoint = url.includes('anthropic-ai');
-    const isScreenshotEndpoint = url.includes('capture-screenshot') || url.includes('latest');
+  window.fetch = async function interceptedFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> {
+    const url = typeof input === 'string' ? input : input.url;
+    const method = init?.method || 'GET';
+    const requestInit = init || {};
+    const startTime = performance.now();
     
-    if (isAssistantEndpoint || isScreenshotEndpoint) {
-      logDebug(`Network request intercepted to: ${url}`);
-      
-      // Log detailed request information
-      if (isAssistantEndpoint) {
-        const requestInit = args[1] as RequestInit;
-        const method = requestInit?.method || 'GET';
-        
-        // Create a sanitized copy of headers without sensitive information
-        const headers = requestInit?.headers ? 
+    // Extract relevant info
+    const endpoint = url.split('?')[0];
+    
+    // Special handling for anthropic-ai endpoint
+    const isAiApi = endpoint.includes('anthropic-ai');
+    const isCapture = endpoint.includes('capture-screenshot') || endpoint.includes('last-capture');
+    
+    // Debug output for AI requests
+    if (isAiApi) {
+      logDebug(`AI request: ${method} ${url.substring(0, 100)}...`);
+    }
+    
+    // Log capture-related calls
+    if (isCapture) {
+      // Clean printed headers to avoid leaking credentials to logs
+      if (requestInit.headers) {
+        const headers = requestInit.headers instanceof Headers ? 
           Object.fromEntries(
-            Object.entries(requestInit.headers as Record<string, string>)
+            [...requestInit.headers.entries()]
               .filter(([key]) => !['Authorization', 'apikey'].includes(key))
           ) : {};
         
@@ -36,29 +44,18 @@ export const setupFetchInterceptor = (): () => void => {
     }
     
     try {
-      const startTime = performance.now();
-      const response = await originalFetch(...args);
-      const endTime = performance.now();
-      const responseTime = Math.round(endTime - startTime);
+      const response = await originalFetch(input, init);
+      const responseTime = performance.now() - startTime;
       
-      if ((isAssistantEndpoint || isScreenshotEndpoint) && responseTime > 500) {
-        logDebug(`Slow request (${responseTime}ms): ${url}`);
-      }
-      
-      if ((isAssistantEndpoint || isScreenshotEndpoint) && !response.ok) {
-        const { status, isBackground } = handleHttpError(url, response.status, response.statusText, responseTime);
-        
-        // If we get a 401 unauthorized, try to refresh the token
-        if (status === 401 && !isBackground) {
-          tokenManager.scheduleRefresh();
-        }
+      // Check for HTTP status errors
+      if (!response.ok) {
+        handleHttpError(url, response.status, response.statusText, responseTime);
       }
       
       return response;
     } catch (error) {
-      if (isAssistantEndpoint || isScreenshotEndpoint) {
-        handleFetchError(url, error instanceof Error ? error : new Error(String(error)));
-      }
+      // Handle network errors
+      handleFetchError(url, error as Error);
       throw error;
     }
   };
@@ -66,7 +63,6 @@ export const setupFetchInterceptor = (): () => void => {
   // Return cleanup function
   return () => {
     window.fetch = originalFetch;
-    tokenManager.cleanup();
     logDebug("Fetch interceptor disabled");
   };
 };

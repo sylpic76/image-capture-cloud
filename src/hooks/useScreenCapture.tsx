@@ -1,3 +1,4 @@
+
 import { useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ScreenCaptureStatus, ScreenCaptureConfig } from './screenCapture/types';

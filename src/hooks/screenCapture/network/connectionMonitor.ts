@@ -9,13 +9,13 @@ export const setupConnectionMonitor = (): () => void => {
   // Handle online event
   const handleOnline = () => {
     logDebug("🌐 Connexion internet rétablie");
-    toast.success("Connexion internet rétablie");
+    // Suppression du toast de connexion rétablie
   };
   
   // Handle offline event
   const handleOffline = () => {
     logDebug("🌐 Connexion internet perdue");
-    toast.error("Connexion internet perdue. Les requêtes ne peuvent pas être envoyées.");
+    // Suppression du toast de connexion perdue
   };
   
   window.addEventListener('online', handleOnline);

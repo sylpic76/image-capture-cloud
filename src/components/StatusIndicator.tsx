@@ -18,30 +18,23 @@ const StatusIndicator = ({ status, className = '' }: StatusIndicatorProps) => {
     case 'online':
       icon = <Wifi size={14} />;
       tooltipText = 'Connecté au serveur';
-      badgeVariant = 'outline';  // Moins visible quand tout va bien
+      badgeVariant = 'outline';
       break;
     case 'offline':
       icon = <WifiOff size={14} />;
-      tooltipText = 'Mode hors ligne - la synchronisation sera effectuée dès que possible';
-      badgeVariant = 'secondary';  // Moins alarmiste que destructive
+      tooltipText = 'Mode hors ligne';
+      badgeVariant = 'secondary';
       break;
     case 'uncertain':
     default:
       icon = <AlertTriangle size={14} />;
-      tooltipText = 'Connexion instable - essaie de se reconnecter automatiquement';
+      tooltipText = 'Connexion instable';
       badgeVariant = 'secondary';
       break;
   }
   
-  // Ne montre le texte qu'en cas de problème, sinon juste l'icône
-  const displayContent = status !== 'online' ? (
-    <>
-      {icon}
-      <span>
-        {status === 'offline' ? 'Mode hors ligne' : 'Reconnexion...'}
-      </span>
-    </>
-  ) : icon;
+  // Simplification de l'affichage - juste l'icône pour tous les états
+  const displayContent = icon;
   
   return (
     <TooltipProvider>
