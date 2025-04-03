@@ -12,7 +12,13 @@ export const setupFetchInterceptor = (): () => void => {
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> {
-    const url = typeof input === 'string' ? input : input.url;
+    // Extract URL string correctly based on input type
+    const url = typeof input === 'string' 
+      ? input 
+      : input instanceof Request 
+        ? input.url 
+        : input.toString();
+        
     const method = init?.method || 'GET';
     const requestInit = init || {};
     const startTime = performance.now();
