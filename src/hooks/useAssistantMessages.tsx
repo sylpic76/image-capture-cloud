@@ -180,8 +180,8 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       // Create network message string separately to avoid type comparison issues
       let networkMessage = '';
       
-      // Use a string comparison to check the network status
-      if (networkStatus === 'offline') {
+      // Fix the comparison - use a type-safe approach
+      if (typeof networkStatus === 'string' && networkStatus === 'offline') {
         networkMessage = 'Vérifiez votre connexion internet.';
       }
       
