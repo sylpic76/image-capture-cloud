@@ -41,7 +41,6 @@ export const handleFetchError = (url: string, error: Error) => {
   const errorName = error.name;
   const errorStack = error.stack;
   
-  // Fix: Remove second argument from logError
   logError(`Erreur réseau pour ${url}`, { 
     error: errorMessage,
     name: errorName,

@@ -5,7 +5,7 @@ export const createLogger = () => {
     console.log(`[useScreenCapture] ${message}`);
   };
 
-  const logError = (message: string, error: any) => {
+  const logError = (message: string, error?: any) => {
     console.error(`[useScreenCapture ERROR] ${message}:`, error);
     return error instanceof Error ? error : new Error(String(error));
   };
