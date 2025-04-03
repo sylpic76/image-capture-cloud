@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
 import { ImageProcessingStatus } from '@/types/assistant';
-import { useConversationState } from '@/hooks/screenCapture/useConversationState';
+import { useConversationState } from '@/hooks/useConversationState';
 import { toast } from 'sonner';
 import { fetchLatestScreenshot } from '@/utils/screenshotUtils';
 import { sendMessageToAI } from '@/utils/conversationUtils';
