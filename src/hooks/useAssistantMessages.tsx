@@ -92,7 +92,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       };
       
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in handleSubmit:', error);
       
       // Add error message
@@ -130,6 +130,9 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const saveConversation = async () => {
     try {
       if (messages.length === 0) return;
+      
+      // Log this operation to check if it's being called
+      console.log('Saving conversation to Supabase:', messages);
       
       const { error } = await supabase.from('conversations').insert({
         messages: convertMessagesToJson(messages)

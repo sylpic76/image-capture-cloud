@@ -13,6 +13,8 @@ export const saveConversation = async (messages: Message[]): Promise<void> => {
   }
   
   try {
+    console.log("Attempting to save conversation to Supabase:", messages.length, "messages");
+    
     // Use the conversion function to make messages JSON-compatible
     const { error } = await supabase
       .from('conversations')
@@ -20,10 +22,14 @@ export const saveConversation = async (messages: Message[]): Promise<void> => {
         messages: convertMessagesToJson(messages),
       });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error details:", error);
+      throw error;
+    }
     toast.success("Conversation sauvegardée avec succès!");
+    console.log("Conversation saved successfully to Supabase");
   } catch (error) {
-    console.error('Erreur de sauvegarde:', error);
+    console.error('Erreur de sauvegarde complète:', error);
     toast.error("Impossible de sauvegarder la conversation.");
   }
 };
@@ -36,6 +42,7 @@ export const sendMessageToAI = async (
   screenshotBase64: string | null
 ): Promise<{ response: string; image_processed?: boolean }> => {
   console.log("Calling Gemini with screenshot:", screenshotBase64 ? "Yes (base64 data available)" : "None");
+  console.log("Using endpoint:", `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`);
   
   try {
     const aiResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`, {
