@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { ImageProcessingStatus } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
-import { useNetworkStatus } from './useNetworkStatus';
+import { useNetworkStatus, NetworkStatus } from './useNetworkStatus';
 import { toast } from 'sonner';
 import { fetchLatestScreenshot } from '@/utils/screenshotUtils';
 import { sendMessageToAI } from '@/utils/conversationUtils';
@@ -86,7 +86,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       // Create network message string separately
       let networkMessage = '';
       
-      // Compare as strings to avoid type issues
+      // Vérification corrigée pour éviter l'erreur de typage
       if (networkStatus === 'offline') {
         networkMessage = 'Vérifiez votre connexion internet.';
       }

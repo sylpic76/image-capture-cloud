@@ -3,10 +3,15 @@ import { useState, useEffect } from 'react';
 import { checkNetworkConnectivity } from '@/utils/projectUtils';
 
 /**
+ * Type définissant les états possibles de connexion réseau
+ */
+export type NetworkStatus = 'online' | 'offline' | 'uncertain';
+
+/**
  * Hook to monitor network connectivity status
  */
 export function useNetworkStatus() {
-  const [networkStatus, setNetworkStatus] = useState<'online' | 'offline' | 'uncertain'>('uncertain');
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>('uncertain');
   
   useEffect(() => {
     const checkNetwork = async () => {
