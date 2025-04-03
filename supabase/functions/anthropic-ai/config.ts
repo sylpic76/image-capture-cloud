@@ -1,7 +1,7 @@
 
 // Configuration constants
 export const GEMINI_API_KEY = "your-gemini-key-will-be-set-via-env"; // Will be set via env
-export const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+export const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent";
 
 // CORS headers configuration
 export const corsHeaders = {
