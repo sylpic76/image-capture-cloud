@@ -8,26 +8,44 @@ import { checkNetworkConnectivity } from '@/utils/projectUtils';
 export type NetworkStatus = 'online' | 'offline' | 'uncertain';
 
 /**
- * Hook to monitor network connectivity status
+ * Hook pour surveiller l'état de la connexion réseau, avec une approche moins restrictive
  */
 export function useNetworkStatus() {
-  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>('uncertain');
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(navigator.onLine ? 'online' : 'uncertain');
   
   useEffect(() => {
     const checkNetwork = async () => {
-      const isConnected = await checkNetworkConnectivity();
-      setNetworkStatus(isConnected ? 'online' : 'offline');
+      try {
+        const isConnected = await checkNetworkConnectivity();
+        setNetworkStatus(isConnected ? 'online' : 'offline');
+      } catch (error) {
+        // En cas d'erreur, on considère que l'état est incertain plutôt qu'offline
+        console.warn("Erreur lors de la vérification réseau", error);
+        // On préfère faire confiance à l'API navigator.onLine
+        setNetworkStatus(navigator.onLine ? 'uncertain' : 'offline');
+      }
     };
     
-    // Check immediately on mount
-    checkNetwork();
+    // Vérification immédiate avec un délai pour éviter les faux positifs
+    setTimeout(checkNetwork, 1000);
     
-    // Then check every 30 seconds
-    const interval = setInterval(checkNetwork, 30000);
+    // Puis vérification toutes les 60 secondes (au lieu de 30)
+    const interval = setInterval(checkNetwork, 60000);
     
-    // Listen to browser's online/offline events
-    const handleOnline = () => setNetworkStatus('online');
-    const handleOffline = () => setNetworkStatus('offline');
+    // Écoute des événements online/offline du navigateur
+    const handleOnline = () => {
+      console.log("[Network] Le navigateur signale une connexion");
+      setNetworkStatus('online');
+    };
+    
+    const handleOffline = () => {
+      console.log("[Network] Le navigateur signale une déconnexion");
+      // On passe à "uncertain" plutôt que directement à "offline"
+      setNetworkStatus('uncertain');
+      
+      // On vérifie après un court délai pour confirmer
+      setTimeout(checkNetwork, 2000);
+    };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);

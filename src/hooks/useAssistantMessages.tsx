@@ -11,6 +11,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
 
+  // On récupère l'état du réseau mais on ne bloque pas l'envoi des messages
   const networkStatus = useNetworkStatus();
 
   const {
@@ -31,11 +32,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
 
     if (!input.trim()) return;
 
-    // Vérifier le statut du réseau avant d'envoyer
+    // Affiche un avertissement au lieu de bloquer complètement l'envoi
     if (networkStatus === 'offline') {
-      console.warn("Network is offline, cannot send message");
-      toast.error("Vous êtes hors ligne. Impossible d'envoyer le message à l'assistant.");
-      return;
+      console.warn("Réseau hors ligne, tentative d'envoi quand même");
+      toast.warning("Connexion instable. Tentative d'envoi quand même...");
+      // On continue l'exécution au lieu de bloquer
     }
 
     console.log(`[Assistant] Envoi de message: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}" (réseau: ${networkStatus})`);
@@ -86,11 +87,11 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       
       addErrorMessage(error);
       
-      // Message d'erreur plus détaillé
-      let errorMessage = "Erreur assistant.";
+      // Message d'erreur plus détaillé et sans bloquer l'utilisateur
+      let errorMessage = "Erreur de communication. Réessayez dans quelques instants.";
       
       if (error.message?.includes('Failed to fetch')) {
-        errorMessage = `Erreur de connexion avec le serveur. Vérifiez votre connexion internet (Statut réseau: ${networkStatus}).`;
+        errorMessage = `Erreur de connexion au serveur. L'application essaiera de se reconnecter automatiquement.`;
       } else if (error.message) {
         errorMessage = `Erreur: ${error.message}`;
       }

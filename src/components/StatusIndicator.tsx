@@ -18,31 +18,37 @@ const StatusIndicator = ({ status, className = '' }: StatusIndicatorProps) => {
     case 'online':
       icon = <Wifi size={14} />;
       tooltipText = 'Connecté au serveur';
-      badgeVariant = 'default';
+      badgeVariant = 'outline';  // Moins visible quand tout va bien
       break;
     case 'offline':
       icon = <WifiOff size={14} />;
-      tooltipText = 'Aucune connexion au serveur';
-      badgeVariant = 'destructive';
+      tooltipText = 'Mode hors ligne - la synchronisation sera effectuée dès que possible';
+      badgeVariant = 'secondary';  // Moins alarmiste que destructive
       break;
     case 'uncertain':
     default:
       icon = <AlertTriangle size={14} />;
-      tooltipText = 'État de la connexion incertain';
+      tooltipText = 'Connexion instable - essaie de se reconnecter automatiquement';
       badgeVariant = 'secondary';
       break;
   }
+  
+  // Ne montre le texte qu'en cas de problème, sinon juste l'icône
+  const displayContent = status !== 'online' ? (
+    <>
+      {icon}
+      <span>
+        {status === 'offline' ? 'Mode hors ligne' : 'Reconnexion...'}
+      </span>
+    </>
+  ) : icon;
   
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant={badgeVariant} className={`inline-flex items-center gap-1 ${className}`}>
-            {icon}
-            <span>
-              {status === 'online' ? 'En ligne' : 
-               status === 'offline' ? 'Hors ligne' : 'Vérification...'}
-            </span>
+          <Badge variant={badgeVariant} className={`inline-flex items-center gap-1 ${className} ${status === 'online' ? 'opacity-50' : ''}`}>
+            {displayContent}
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
