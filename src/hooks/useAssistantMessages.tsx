@@ -176,7 +176,9 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
       };
       
       setMessages(prevMessages => [...prevMessages, errorMessage]);
-      toast.error(`Erreur de communication avec l'assistant. ${networkStatus === 'offline' ? 'Vérifiez votre connexion internet.' : ''}`);
+      // Fix the type comparison issue by creating the network message separately
+      const networkMessage = networkStatus === 'offline' ? 'Vérifiez votre connexion internet.' : '';
+      toast.error(`Erreur de communication avec l'assistant. ${networkMessage}`);
     } finally {
       setIsLoading(false);
       setImageProcessingStatus('idle');
