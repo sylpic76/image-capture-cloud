@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { captureScreen } from "./screenCapture/captureScreen";
 import { uploadScreenshot } from "./screenCapture/utils/uploadUtils";
-import { fetchLatestScreenshot } from "@/utils/screenshotUtils";
 import { ImageProcessingStatus } from "@/types/assistant";
 import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types";
 import { createLogger } from "./screenCapture/logger";
@@ -13,34 +12,30 @@ const { logDebug, logError } = createLogger();
 
 export interface CaptureConfig {
   autoStart?: boolean;
-  interval?: number; // en secondes
+  interval?: number;
   captureCount?: number;
   autoUpload?: boolean;
   offline?: boolean;
   suppressPermissionPrompt?: boolean;
 }
 
-export const useScreenCapture = (countdownSeconds = 1, config?: CaptureConfig) => {
+export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) => {
   const [status, setStatus] = useState<ScreenCaptureStatus>("idle");
   const [countdown, setCountdown] = useState(countdownSeconds);
   const [error, setError] = useState<Error | null>(null);
   const [sdkDisabled, setSdkDisabled] = useState(false);
-  const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
+  const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>("idle");
 
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const captureCountRef = useRef(0);
-  const successCountRef = useRef(0);
-  const failureCountRef = useRef(0);
-  const mountedRef = useRef(true);
-  const permissionAttemptRef = useRef(false);
-  const permissionInProgressRef = useRef(false);
-  const intervalSeconds = config?.interval || 1;
 
   const {
-    autoStart = false,
+    autoStart = true,
+    interval = 10,
     captureCount = Infinity,
     autoUpload = true,
     offline = false,
-    suppressPermissionPrompt = false,
+    suppressPermissionPrompt = false
   } = config || {};
 
   const configRef = useRef<ScreenCaptureConfig>(lockConfiguration({
@@ -49,151 +44,101 @@ export const useScreenCapture = (countdownSeconds = 1, config?: CaptureConfig) =
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
-
-  const startCountdown = useCallback(() => {
-    setCountdown(intervalSeconds);
-    countdownRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) return 0;
-        return prev - 1;
-      });
-    }, 1000);
-  }, [intervalSeconds]);
-
-  const stopCountdown = useCallback(() => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-  }, []);
-
   const stopCapture = useCallback(() => {
-    if (status === "idle") return;
-    logDebug("[Capture] stopCapture() CALLED");
-
-    stopCountdown();
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    stopMediaTracks(mediaStreamRef.current);
     mediaStreamRef.current = null;
-
     setStatus("idle");
-  }, [status, stopCountdown]);
+    logDebug("[Capture] System stopped");
+  }, []);
 
   const takeScreenshot = useCallback(async () => {
     if (status !== "active" || !mediaStreamRef.current) {
-      logDebug("[Capture] Cannot take screenshot - inactive or no stream");
+      logDebug("[Capture] Cannot take screenshot - system not running or no stream");
       return;
     }
 
-    try {
-      const captureId = ++captureCountRef.current;
-      logDebug(`[Capture] Screenshot #${captureId}`);
+    const imageUrl = await captureScreen(
+      mediaStreamRef.current,
+      status,
+      () => ++captureCountRef.current,
+      () => {},
+      () => {},
+      () => {}
+    );
 
-      const imageUrl = await captureScreen(
-        mediaStreamRef.current,
-        status,
-        () => captureCountRef.current,
-        () => successCountRef.current++,
-        () => failureCountRef.current++,
-        () => {}
-      );
-
-      if (autoUpload && !offline && imageUrl) {
-        try {
-          await fetchLatestScreenshot(setImageProcessingStatus);
-        } catch (err) {
-          logError("[Capture] Error fetching latest screenshot:", err);
-        }
+    if (imageUrl && autoUpload && !offline) {
+      try {
+        await uploadScreenshot(imageUrl);
+      } catch (err) {
+        logError("[Capture] Upload failed:", err);
       }
-
-      if (captureCountRef.current >= captureCount) {
-        logDebug("[Capture] Max capture count reached");
-        stopCapture();
-      }
-
-    } catch (error) {
-      logError("[Capture] Screenshot error:", error);
-      handleCaptureError(error);
     }
-  }, [status, autoUpload, offline, stopCapture, captureCount]);
 
-  const handleCaptureError = useCallback((error: any) => {
-    stopCapture();
-    setStatus("error");
-    setError(error instanceof Error ? error : new Error(String(error)));
-
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.includes("Permission")) {
-      toast.error("Permission refusée", {
-        description: "Autorise le partage d'écran pour utiliser cette fonctionnalité.",
-      });
-    } else {
-      toast.error("Erreur de capture", {
-        description: errorMessage.substring(0, 100),
-      });
+    if (captureCountRef.current >= captureCount) {
+      stopCapture();
     }
-  }, [stopCapture]);
+  }, [status, autoUpload, offline, captureCount, stopCapture]);
 
   const initCapture = useCallback(async () => {
-    if (status === "active" || status === "requesting-permission") return;
-
-    if (suppressPermissionPrompt) {
-      setSdkDisabled(true);
-      return;
-    }
-
-    setError(null);
+    if (status !== "idle") return;
     setStatus("requesting-permission");
 
-    const permissionGranted = await requestMediaPermission(mediaStreamRef);
-    if (permissionGranted) {
-      setStatus("active");
-      startCountdown();
-    } else {
+    try {
+      const stream = await requestMediaPermission(configRef);
+      if (stream) {
+        mediaStreamRef.current = stream; // ✅ FIX CRITIQUE
+        setStatus("active");
+        setCountdown(interval);
+      } else {
+        setStatus("error");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, suppressPermissionPrompt, startCountdown]);
-
-  useEffect(() => {
-    if (countdown === 0 && status === "active") {
-      takeScreenshot();
-      setCountdown(intervalSeconds);
-    }
-  }, [countdown, status, takeScreenshot, intervalSeconds]);
+  }, [status, configRef, interval]);
 
   const toggleCapture = useCallback(() => {
-    if (status === "idle" || status === "error") {
-      initCapture();
-    } else {
+    if (status === "active") {
       stopCapture();
       toast.info("Capture arrêtée");
+    } else {
+      initCapture();
     }
   }, [status, initCapture, stopCapture]);
+
+  useEffect(() => {
+    if (status !== "active") return;
+
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          takeScreenshot();
+          return interval;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [status, interval, takeScreenshot]);
 
   useEffect(() => {
     if (autoStart && status === "idle" && !suppressPermissionPrompt) {
       initCapture();
     }
 
-    return () => {
-      mountedRef.current = false;
-      stopCapture();
-    };
+    return () => stopCapture();
   }, [autoStart, status, suppressPermissionPrompt, initCapture, stopCapture]);
 
-  const getDiagnostics = useCallback(() => {
-    return {
-      status,
-      countdown,
-      hasMediaStream: !!mediaStreamRef.current,
-      lastError: error?.message || null,
-      captures: captureCountRef.current,
-      successful: successCountRef.current,
-      failed: failureCountRef.current,
-      intervalSeconds,
-    };
-  }, [status, countdown, error, intervalSeconds]);
+  const getDiagnostics = useCallback(() => ({
+    status,
+    countdown,
+    hasMediaStream: !!mediaStreamRef.current,
+    lastError: error?.message || null,
+    captures: captureCountRef.current,
+    interval
+  }), [status, countdown, error, interval]);
 
   return {
     status,
