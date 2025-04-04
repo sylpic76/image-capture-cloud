@@ -46,13 +46,16 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
 
   const stopCapture = useCallback(() => {
     logDebug("[useScreenCapture] Stopping capture");
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     stopMediaTracks(mediaStreamRef.current);
     mediaStreamRef.current = null;
     setStatus("idle");
   }, []);
 
-  const takeScreenshot = useCallback(async () => {
+  const takeScreenshot = async () => {
     if (status !== "active" || !mediaStreamRef.current) {
       logDebug("[useScreenCapture] Cannot take screenshot - system not running or no stream");
       return;
@@ -83,7 +86,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     } catch (err) {
       logError("[useScreenCapture] Error during capture", err);
     }
-  }, [status, stopCapture, captureCount]);
+  };
 
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
@@ -103,6 +106,8 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       setStatus("active");
       setCountdown(interval);
 
+      if (timerRef.current) clearInterval(timerRef.current);
+
       timerRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -118,7 +123,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       setError(err instanceof Error ? err : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, interval, takeScreenshot]);
+  }, [status, interval, stopCapture]);
 
   const toggleCapture = useCallback(() => {
     logDebug("[useScreenCapture] Toggle requested, current status:", status);
