@@ -10,6 +10,7 @@ import { createLogger } from "./screenCapture/logger";
 import { requestMediaPermission, stopMediaTracks } from "./screenCapture/mediaStream";
 import { lockConfiguration } from "./screenCapture/config";
 import { useMediaStream } from "./screenCapture/useMediaStream";
+import { useTimer } from "./screenCapture/useTimer";
 
 const { logDebug, logError } = createLogger();
 
@@ -38,20 +39,22 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
   const successCountRef = useRef<number>(0);
   const failureCountRef = useRef<number>(0);
   const mountedRef = useRef<boolean>(true);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const permissionAttemptRef = useRef<boolean>(false);
   const permissionInProgressRef = useRef<boolean>(false);
   
   // Configuration defaults
   const {
     autoStart = false,
-    interval = 30000,
+    interval = 30000, // 30 secondes par défaut en millisecondes
     captureCount = Infinity,
     autoUpload = true,
     offline = false,
     suppressPermissionPrompt = false,
   } = config || {};
 
+  // Convertir l'intervalle de millisecondes en secondes pour l'affichage du compte à rebours
+  const intervalSeconds = Math.floor(interval / 1000);
+  
   // Initialize the capture config
   const configRef = useRef<ScreenCaptureConfig>(lockConfiguration({
     useLowResolution: true,
@@ -68,6 +71,8 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
     () => {
       setStatus("active");
       setError(null);
+      // S'assurer que le compte à rebours est initialisé correctement
+      setCountdown(intervalSeconds);
     },
     (err) => {
       setStatus("error");
@@ -75,96 +80,11 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
     },
     () => {
       setStatus("requesting-permission");
-      setCountdown(countdownSeconds);
+      setCountdown(intervalSeconds);
     },
-    Math.floor(interval / 1000),
+    intervalSeconds,
     setCountdown
   );
-  
-  /**
-   * Start timer for countdown or regular captures
-   */
-  const startTimer = useCallback((duration: number, interval: number, callback: (remaining: number) => void) => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    
-    let remaining = duration;
-    
-    const tick = () => {
-      if (!mountedRef.current) return;
-      
-      remaining -= 1;
-      callback(remaining);
-      
-      if (remaining > 0) {
-        timerRef.current = setTimeout(tick, interval);
-      }
-    };
-    
-    timerRef.current = setTimeout(tick, interval);
-    
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, []);
-  
-  /**
-   * Stop timer
-   */
-  const stopTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-  
-  /**
-   * Initialize capture system
-   */
-  const initCapture = useCallback(async () => {
-    try {
-      if (status === "active" || status === "requesting-permission") {
-        logDebug("[Capture] Already running, skipping initialization");
-        return;
-      }
-      
-      if (suppressPermissionPrompt) {
-        logDebug("[Capture] Permission prompt suppressed");
-        setSdkDisabled(true);
-        return;
-      }
-      
-      logDebug(`[Capture] Starting permission request`);
-      
-      // Clear any existing errors
-      setError(null);
-      
-      // Request media permissions
-      const success = await requestPermission();
-      
-      if (success) {
-        // Start countdown to first capture
-        startTimer(countdownSeconds, 1000, (remaining) => {
-          setCountdown(remaining);
-          
-          if (remaining === 0) {
-            takeScreenshot();
-          }
-        });
-        
-        logDebug("[Capture] System initialized successfully");
-        toast.success("Capture d'écran initialisée");
-      }
-      
-    } catch (error) {
-      logError("[Capture] Initialization error:", error);
-      handleCaptureError(error);
-    }
-  }, [status, countdownSeconds, suppressPermissionPrompt, startTimer, requestPermission]);
   
   /**
    * Take a screenshot
@@ -210,17 +130,9 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
         }
       }
       
-      // Reset countdown for next capture
-      setCountdown(Math.floor(interval / 1000));
-      
-      // Start timer for next capture
-      startTimer(Math.floor(interval / 1000), 1000, (remaining) => {
-        setCountdown(remaining);
-        
-        if (remaining === 0) {
-          takeScreenshot();
-        }
-      });
+      // Réinitialiser le compte à rebours pour la prochaine capture
+      logDebug(`[Capture] Resetting countdown to ${intervalSeconds} seconds after capture`);
+      setCountdown(intervalSeconds);
       
       return imageUrl;
       
@@ -229,7 +141,24 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
       handleCaptureError(error);
       return null;
     }
-  }, [status, interval, startTimer]);
+  }, [status, intervalSeconds, autoUpload, offline]);
+  
+  // Utiliser le hook useTimer pour gérer le compte à rebours
+  const { countdown: timerCountdown, setCountdown: setTimerCountdown } = useTimer(
+    intervalSeconds,
+    status,
+    takeScreenshot
+  );
+  
+  // Synchroniser le compte à rebours entre useTimer et useScreenCapture
+  useEffect(() => {
+    setCountdown(timerCountdown);
+  }, [timerCountdown]);
+  
+  // Synchroniser le compte à rebours de useTimer avec celui de useScreenCapture
+  useEffect(() => {
+    setTimerCountdown(countdown);
+  }, [countdown, setTimerCountdown]);
   
   /**
    * Toggle the capture state
@@ -240,19 +169,56 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
     if (status === "idle" || status === "error") {
       initCapture();
     } else {
-      stopTimer();
       stopCapture();
       setStatus("idle");
       logDebug("[Capture] System stopped");
       toast.info("Capture arrêtée");
     }
-  }, [status, initCapture, stopCapture, stopTimer]);
+  }, [status, stopCapture]);
+  
+  /**
+   * Initialize capture system
+   */
+  const initCapture = useCallback(async () => {
+    try {
+      if (status === "active" || status === "requesting-permission") {
+        logDebug("[Capture] Already running, skipping initialization");
+        return;
+      }
+      
+      if (suppressPermissionPrompt) {
+        logDebug("[Capture] Permission prompt suppressed");
+        setSdkDisabled(true);
+        return;
+      }
+      
+      logDebug(`[Capture] Starting permission request`);
+      
+      // Clear any existing errors
+      setError(null);
+      
+      // Request media permissions
+      const success = await requestPermission();
+      
+      if (success) {
+        logDebug("[Capture] System initialized successfully");
+        toast.success("Capture d'écran initialisée");
+        
+        // S'assurer que le compte à rebours est initialisé à la bonne valeur
+        logDebug(`[Capture] Setting initial countdown to ${intervalSeconds} seconds`);
+        setCountdown(intervalSeconds);
+      }
+      
+    } catch (error) {
+      logError("[Capture] Initialization error:", error);
+      handleCaptureError(error);
+    }
+  }, [status, intervalSeconds, suppressPermissionPrompt, requestPermission]);
   
   /**
    * Handle capture errors
    */
   const handleCaptureError = useCallback((error: any) => {
-    stopTimer();
     stopCapture();
     
     setStatus("error");
@@ -274,7 +240,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
         description: errorMessage.substring(0, 100),
       });
     }
-  }, [stopTimer, stopCapture]);
+  }, [stopCapture]);
   
   // Auto-start on mount if configured
   useEffect(() => {
@@ -286,12 +252,6 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
     // Clean up on unmount
     return () => {
       mountedRef.current = false;
-      
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      
       stopCapture();
     };
   }, [autoStart, initCapture, status, suppressPermissionPrompt, stopCapture]);
@@ -310,9 +270,11 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
       browserInfo: navigator.userAgent,
       isSdkDisabled: configRef.current.disableAdvancedSDK,
       permissionAttempted: permissionAttemptRef.current,
-      permissionInProgress: permissionInProgressRef.current
+      permissionInProgress: permissionInProgressRef.current,
+      intervalSeconds: intervalSeconds,
+      interval: interval
     };
-  }, [status, countdown, error]);
+  }, [status, countdown, error, intervalSeconds, interval]);
   
   return {
     status,

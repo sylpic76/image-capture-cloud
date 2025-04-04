@@ -19,6 +19,7 @@ export const useTimer = (
   // Reset countdown when status changes to active
   useEffect(() => {
     if (status === 'active') {
+      logDebug(`Resetting countdown to ${intervalSeconds} seconds because status changed to active`);
       setCountdown(intervalSeconds);
     }
   }, [status, intervalSeconds]);

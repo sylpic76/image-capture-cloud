@@ -93,9 +93,11 @@ export const useMediaStream = (
       // Store the stream reference
       mediaStreamRef.current = stream;
       
-      // Set active status and restart countdown
+      // Set active status and explicitly set countdown to intervalSeconds
       if (mountedRef.current) {
         setActiveStatus();
+        // Assurons-nous de réinitialiser le compte à rebours avec la bonne valeur
+        logDebug(`Setting countdown to ${intervalSeconds} seconds after permission granted`);
         setCountdown(intervalSeconds);
       }
       
