@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
@@ -10,18 +9,24 @@ import MobileTabView from "@/components/UnifiedApp/MobileTabView";
 
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
-  
-  // Screen capture functionality
-  // On configure l'intervalle à 30 secondes 
-  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5, {
-    interval: 30,
-    autoStart: false
+
+  // Screen capture config
+  const captureInterval = 10;
+
+  const {
+    status,
+    countdown,
+    toggleCapture,
+    getDiagnostics,
+    sdkDisabled
+  } = useScreenCapture(captureInterval, {
+    interval: captureInterval,
+    autoStart: false // important pour ne pas démarrer sans action manuelle
   });
-  
-  // Assistant IA functionality
+
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [useScreenshots, setUseScreenshots] = useState(true);
-  
+
   const {
     messages,
     input,
@@ -36,22 +41,18 @@ const UnifiedApp = () => {
     setCurrentProject,
     networkStatus
   } = useAssistantMessages(useScreenshots);
-  
+
   const [latestScreenshot, setLatestScreenshot] = useState<string | null>(null);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [isImageLoading, setIsImageLoading] = useState(false);
-  
-  // Updated API Endpoint URLs
+
   const lastCaptureEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/last-capture`;
   const screenshotsApiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/screenshot_log?select=image_url,created_at&order=created_at.desc&limit=10`;
-  
+
   const fetchLatestScreenshot = async () => {
     try {
       setIsImageLoading(true);
-      
-      // Add cache-busting parameter
       const cacheBuster = `?t=${Date.now()}`;
-      
       const response = await fetch(`${lastCaptureEndpoint}${cacheBuster}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -61,51 +62,22 @@ const UnifiedApp = () => {
         cache: 'no-store',
       });
 
-      if (!response.ok) {
-        console.error('Error fetching screenshot URL:', response.status);
-        setIsImageLoading(false);
-        return;
-      }
-
       const data = await response.json();
-      
-      if (!data.url) {
-        console.error('Invalid response from server:', data);
-        setIsImageLoading(false);
-        return;
+      if (data?.url) {
+        const imageResponse = await fetch(data.url, { cache: 'no-store' });
+        const blob = await imageResponse.blob();
+        const url = URL.createObjectURL(blob);
+        if (latestScreenshot) URL.revokeObjectURL(latestScreenshot);
+        setLatestScreenshot(url);
+        setLastRefreshTime(new Date());
       }
-
-      // Fetch the actual image using the signed URL
-      const imageResponse = await fetch(data.url, {
-        cache: 'no-store'
-      });
-      
-      if (!imageResponse.ok) {
-        console.error('Error fetching image with signed URL:', imageResponse.status);
-        setIsImageLoading(false);
-        return;
-      }
-      
-      const blob = await imageResponse.blob();
-      const url = URL.createObjectURL(blob);
-      
-      // Revoke old URL if exists
-      if (latestScreenshot) {
-        URL.revokeObjectURL(latestScreenshot);
-      }
-      
-      setLatestScreenshot(url);
-      setLastRefreshTime(new Date());
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Erreur screenshot:", error);
     } finally {
       setIsImageLoading(false);
     }
   };
 
-  // Suppression de la logique de démarrage automatique de la capture d'écran
-  // Nous avons enlevé l'autostart au chargement de la page
-  
   if (isMobile) {
     return (
       <MobileTabView 
@@ -138,15 +110,14 @@ const UnifiedApp = () => {
       />
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent pb-1">
         Image Capture & Assistant IA
       </h1>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left column - Screen Capture Controls (1/3 width) */}
         <ScreenCaptureSection 
           status={status}
           countdown={countdown}
@@ -154,8 +125,7 @@ const UnifiedApp = () => {
           getDiagnostics={getDiagnostics}
           sdkDisabled={sdkDisabled}
         />
-        
-        {/* Right column - Assistant IA (2/3 width) */}
+
         <AssistantSection 
           messages={messages}
           input={input}
@@ -174,7 +144,7 @@ const UnifiedApp = () => {
           networkStatus={networkStatus}
         />
       </div>
-      
+
       <ChatOptions 
         open={isOptionsOpen} 
         onOpenChange={setIsOptionsOpen}
