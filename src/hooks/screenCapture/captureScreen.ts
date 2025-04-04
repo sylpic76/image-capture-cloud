@@ -20,8 +20,26 @@ export const captureScreen = async (
 ): Promise<string | null> => {
   // Check if capture can be performed
   if (!validateCapturePrerequisites(mediaStream, status)) {
+    logError("Capture prerequisites not met", new Error("Invalid media stream or status"));
     return null;
   }
+  
+  // Extra validation for mediaStream
+  if (!mediaStream.active) {
+    logError("MediaStream is no longer active", new Error("MediaStream inactive"));
+    return null;
+  }
+  
+  const videoTracks = mediaStream.getVideoTracks();
+  if (videoTracks.length === 0) {
+    logError("No video tracks found", new Error("No video tracks"));
+    return null;
+  }
+  
+  // Log details of all tracks before capturing
+  videoTracks.forEach(track => {
+    logDebug(`Video track status before capture: id=${track.id}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+  });
   
   let retryCount = 0;
   const maxRetries = 2;
@@ -34,11 +52,6 @@ export const captureScreen = async (
       // Re-verify stream is active before proceeding
       if (!mediaStream.active) {
         throw new Error("MediaStream is no longer active");
-      }
-      
-      const videoTracks = mediaStream.getVideoTracks();
-      if (videoTracks.length === 0) {
-        throw new Error("No video tracks found in MediaStream");
       }
       
       // Verify if tracks are still usable
@@ -62,13 +75,17 @@ export const captureScreen = async (
       // Upload screenshot
       const url = await uploadScreenshot(blob, captureId);
       
+      if (!url) {
+        throw new Error("Screenshot upload failed - no URL returned");
+      }
+      
       // Update state with successful capture
       setLastCaptureUrl(url);
       incrementSuccessCount();
       
       // Log de la capture réussie
-      logDebug("✅ Capture envoyée à Supabase @" + new Date().toISOString());
-      console.log("Capture envoyée à Supabase @", new Date().toISOString());
+      logDebug(`✅ Capture #${captureId} envoyée à Supabase @${new Date().toISOString()}`);
+      console.log(`Capture #${captureId} envoyée à Supabase @`, new Date().toISOString());
       
       return url;
     } catch (error) {

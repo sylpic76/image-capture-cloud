@@ -41,15 +41,12 @@ export const requestMediaPermission = async (
     logDebug(`Requesting media with constraints: ${JSON.stringify(constraints)}`);
     
     try {
-      // Ajout d'un mécanisme pour éviter les appels simultanés
-      const streamPromise = navigator.mediaDevices.getDisplayMedia(constraints);
-      
-      // IMPORTANT: Nous ne définissons pas de timeout ici pour éviter les conflits avec
-      // la boîte de dialogue native du navigateur, qui gère son propre timing
-      const stream = await streamPromise;
+      // Demander l'accès au media - pas de timeout car bloqué par l'UI du navigateur
+      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
       
       if (!stream || !stream.active || stream.getTracks().length === 0) {
-        throw new Error("Stream obtained but appears to be invalid");
+        logError("Stream obtained but appears to be invalid", new Error("Invalid stream"));
+        return null;
       }
       
       // Log detailed info about each track
@@ -69,16 +66,23 @@ export const requestMediaPermission = async (
       if (e instanceof DOMException && 
           (e.name === 'OverconstrainedError' || e.name === 'ConstraintNotSatisfiedError')) {
         logDebug("Constraints not satisfied, retrying with minimal constraints");
-        const fallbackStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        
-        if (!fallbackStream || !fallbackStream.active) {
-          throw new Error("Fallback stream failed to initialize");
+        try {
+          const fallbackStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          
+          if (!fallbackStream || !fallbackStream.active) {
+            logError("Fallback stream failed to initialize", new Error("Fallback stream invalid"));
+            return null;
+          }
+          
+          logDebug("Fallback stream obtained successfully");
+          return fallbackStream;
+        } catch (fallbackError) {
+          // Si même la tentative de fallback échoue
+          logError("Fallback attempt failed", fallbackError);
+          throw fallbackError; // Rethrow to be handled by the caller
         }
-        
-        logDebug("Fallback stream obtained successfully");
-        return fallbackStream;
       } else {
-        throw e;
+        throw e; // Rethrow to be handled by the caller
       }
     }
   } catch (error) {
@@ -102,7 +106,7 @@ export const requestMediaPermission = async (
     } else {
       logError("Failed to obtain media stream", error);
     }
-    return null;
+    throw error; // Always throw to let the caller handle the error
   }
 };
 
@@ -120,7 +124,6 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
       logDebug(`Stopping track: ${track.kind}, enabled: ${track.enabled}, muted: ${track.muted}, readyState=${track.readyState}`);
       
       // Vérifier si la piste est déjà arrêtée
-      // Les valeurs possibles pour readyState sont "live" ou "ended"
       if (track.readyState !== "live") {
         logDebug(`Track ${track.id} already ended, skipping`);
         return;

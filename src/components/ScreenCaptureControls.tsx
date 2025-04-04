@@ -57,7 +57,7 @@ const ScreenCaptureControls = ({
         return (
           <Button onClick={toggleCapture} variant="outline" className="w-full md:w-auto">
             <PauseCircle className="mr-2 h-4 w-4" />
-            Mettre en pause
+            Arrêter
           </Button>
         );
       case 'paused':
@@ -71,7 +71,7 @@ const ScreenCaptureControls = ({
         return (
           <Button disabled className="w-full md:w-auto">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Demande...
+            Demande en cours...
           </Button>
         );
       default:

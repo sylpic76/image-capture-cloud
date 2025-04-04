@@ -44,27 +44,36 @@ export const useMediaStream = (
       return false;
     }
     
-    permissionInProgressRef.current = true;
-    permissionAttemptRef.current = true;
-    
-    // Update UI state
-    if (mountedRef.current) {
-      setRequestingStatus();
-    }
-    
     try {
-      // Instead of using the function in this file, use the imported one
-      const stream = await requestMediaPermission(configRef);
+      permissionInProgressRef.current = true;
+      permissionAttemptRef.current = true;
       
-      if (!stream) {
-        permissionInProgressRef.current = false;
-        throw new Error("Failed to obtain media stream");
+      // Update UI state
+      if (mountedRef.current) {
+        setRequestingStatus();
       }
       
+      logDebug("Starting screen capture permission request...");
+      
+      // Request media permission with proper error handling
+      const stream = await requestMediaPermission(configRef);
+      
+      // Check if still mounted before proceeding
       if (!mountedRef.current) {
         logDebug("Component unmounted during permission request, cleaning up");
         stopMediaTracks(stream);
         permissionInProgressRef.current = false;
+        return false;
+      }
+      
+      // If no stream was returned but no error was thrown
+      if (!stream) {
+        logDebug("No stream returned but no error thrown");
+        permissionInProgressRef.current = false;
+        
+        if (mountedRef.current) {
+          setErrorStatus(new Error("Failed to obtain media stream"));
+        }
         return false;
       }
       
@@ -93,14 +102,17 @@ export const useMediaStream = (
       permissionInProgressRef.current = false;
       return true;
     } catch (error) {
+      // Always reset the permission flag, even on error
+      permissionInProgressRef.current = false;
+      
       if (!mountedRef.current) {
         logDebug("Component unmounted during error handling, ignoring error");
-        permissionInProgressRef.current = false;
         return false;
       }
       
       // Handle permission denied or other errors
       logError("Screen capture permission error", error);
+      
       if (mountedRef.current) {
         if (error.name === "NotAllowedError") {
           setErrorStatus(new Error("Permission denied for screen capture"));
@@ -109,7 +121,6 @@ export const useMediaStream = (
         }
       }
       
-      permissionInProgressRef.current = false;
       return false;
     }
   }, [setActiveStatus, setErrorStatus, setRequestingStatus, configRef, permissionAttemptRef, permissionInProgressRef, intervalSeconds, setCountdown]);
