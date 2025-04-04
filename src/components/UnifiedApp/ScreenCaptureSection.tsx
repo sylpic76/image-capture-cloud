@@ -76,23 +76,36 @@ const ScreenCaptureSection = ({
         URL.revokeObjectURL(latestScreenshot);
       }
       
-      // Now fetch the actual image using the signed URL
-      const imageResponse = await fetch(data.url, {
-        cache: 'no-store'
-      });
-      
-      if (!imageResponse.ok) {
-        console.error('Error fetching image with signed URL:', imageResponse.status);
-        toast.error(`Erreur lors de la récupération de l'image: ${imageResponse.status}`);
-        setIsImageLoading(false);
-        return;
+      try {
+        // Now fetch the actual image using the signed URL
+        const imageResponse = await fetch(data.url, {
+          cache: 'no-store'
+        });
+        
+        if (!imageResponse.ok) {
+          console.error('Error fetching image with signed URL:', imageResponse.status);
+          toast.error(`Erreur lors de la récupération de l'image: ${imageResponse.status}`);
+          setIsImageLoading(false);
+          return;
+        }
+        
+        // Vérifier que la réponse est bien une image
+        const contentType = imageResponse.headers.get('Content-Type');
+        if (!contentType || !contentType.startsWith('image/')) {
+          console.error('Invalid content type received:', contentType);
+          toast.error(`Type de contenu invalide: ${contentType}`);
+          setIsImageLoading(false);
+          return;
+        }
+        
+        const blob = await imageResponse.blob();
+        const url = URL.createObjectURL(blob);
+        setLatestScreenshot(url);
+        setLastRefreshTime(new Date());
+      } catch (imageError) {
+        console.error('Error fetching image:', imageError);
+        toast.error(`Erreur lors de la récupération de l'image: ${imageError.message}`);
       }
-      
-      const blob = await imageResponse.blob();
-      const url = URL.createObjectURL(blob);
-      setLatestScreenshot(url);
-      setLastRefreshTime(new Date());
-      // Suppression du toast de succès qui s'affiche régulièrement
     } catch (error) {
       console.error('Error:', error);
       toast.error("Impossible de récupérer la dernière capture d'écran");

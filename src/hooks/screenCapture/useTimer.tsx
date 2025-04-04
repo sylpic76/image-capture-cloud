@@ -10,7 +10,7 @@ const { logDebug } = createLogger();
 export const useTimer = (
   intervalSeconds: number,
   status: string,
-  captureCallback: () => Promise<any>  // Changed from Promise<void> to Promise<any> to accept any Promise return type
+  captureCallback: () => Promise<any>
 ) => {
   const [countdown, setCountdown] = useState<number>(intervalSeconds);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -39,6 +39,22 @@ export const useTimer = (
     // Start a new timer only if status is active
     logDebug(`Starting countdown timer with ${intervalSeconds} second interval`);
     
+    // Démarre immédiatement le compteur avec 0 délai pour s'assurer que le countdown commence tout de suite
+    const runCapture = async () => {
+      if (countdown <= 1 && isMountedRef.current) {
+        logDebug("Countdown reached threshold, triggering capture callback");
+        try {
+          await captureCallback();
+          // Réinitialiser le compteur après la capture
+          if (isMountedRef.current) {
+            setCountdown(intervalSeconds);
+          }
+        } catch (error) {
+          logDebug(`Error in capture callback: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    };
+    
     // Set up the interval timer - ONE interval only
     timerRef.current = setInterval(() => {
       if (!isMountedRef.current) return;
@@ -51,10 +67,7 @@ export const useTimer = (
         
         // Trigger capture when countdown reaches 1
         if (prevCountdown <= 1 && isMountedRef.current) {
-          logDebug("Countdown reached threshold, triggering capture callback");
-          captureCallback().catch(error => {
-            logDebug(`Error in capture callback: ${error.message}`);
-          });
+          runCapture();
         }
         
         return newCountdown;
@@ -68,7 +81,7 @@ export const useTimer = (
         timerRef.current = null;
       }
     };
-  }, [status, intervalSeconds, captureCallback]);
+  }, [status, intervalSeconds, captureCallback, countdown]);
   
   // Handle component unmount
   useEffect(() => {

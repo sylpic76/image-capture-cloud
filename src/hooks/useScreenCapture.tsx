@@ -45,15 +45,15 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
   // Configuration defaults
   const {
     autoStart = false,
-    interval = 30000, // 30 secondes par défaut en millisecondes
+    interval = 30, // 30 secondes par défaut en secondes
     captureCount = Infinity,
     autoUpload = true,
     offline = false,
     suppressPermissionPrompt = false,
   } = config || {};
 
-  // Convertir l'intervalle de millisecondes en secondes pour l'affichage du compte à rebours
-  const intervalSeconds = Math.floor(interval / 1000);
+  // Utiliser directement l'intervalle en secondes pour l'affichage du compte à rebours
+  const intervalSeconds = interval;
   
   // Initialize the capture config
   const configRef = useRef<ScreenCaptureConfig>(lockConfiguration({
@@ -147,7 +147,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
   const { countdown: timerCountdown, setCountdown: setTimerCountdown } = useTimer(
     intervalSeconds,
     status,
-    takeScreenshot  // Now this is compatible with useTimer's expected type
+    takeScreenshot
   );
   
   // Synchroniser le compte à rebours entre useTimer et useScreenCapture

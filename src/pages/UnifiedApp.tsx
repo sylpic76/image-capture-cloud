@@ -11,9 +11,12 @@ import MobileTabView from "@/components/UnifiedApp/MobileTabView";
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
   
-  // Screen capture functionality - sans configuration restrictive
-  // On ne demande plus l'autorisation au chargement
-  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5);
+  // Screen capture functionality
+  // On configure l'intervalle à 30 secondes 
+  const { status, countdown, toggleCapture, getDiagnostics, sdkDisabled } = useScreenCapture(5, {
+    interval: 30,
+    autoStart: false
+  });
   
   // Assistant IA functionality
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
