@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { captureScreen } from "./screenCapture/captureScreen";
-import { uploadScreenshot } from "./screenCapture/utils/uploadUtils";
 import { ImageProcessingStatus } from "@/types/assistant";
 import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types";
 import { createLogger } from "./screenCapture/logger";
@@ -24,7 +23,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
   const [countdown, setCountdown] = useState(countdownSeconds);
   const [error, setError] = useState<Error | null>(null);
   const [sdkDisabled, setSdkDisabled] = useState(false);
-  const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>("idle");
+  const [imageProcessingStatus] = useState<ImageProcessingStatus>("idle");
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const captureCountRef = useRef(0);
@@ -47,7 +46,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
 
   const stopCapture = useCallback(() => {
     logDebug("[useScreenCapture] Stopping capture");
-    if (timerRef.current) clearInterval(timerRef.current); // 🛠️ FIX ici
+    if (timerRef.current) clearInterval(timerRef.current);
     stopMediaTracks(mediaStreamRef.current);
     mediaStreamRef.current = null;
     setStatus("idle");
@@ -59,27 +58,32 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       return;
     }
 
-    const imageUrl = await captureScreen(
-      mediaStreamRef.current,
-      status,
-      () => ++captureCountRef.current,
-      () => {},
-      () => {},
-      () => {}
-    );
+    logDebug("[useScreenCapture] Triggering screenshot");
 
-    if (imageUrl && autoUpload && !offline) {
-      try {
-        await uploadScreenshot(imageUrl);
-      } catch (err) {
-        logError("[Capture] Upload failed:", err);
+    try {
+      const url = await captureScreen(
+        mediaStreamRef.current,
+        status,
+        () => ++captureCountRef.current,
+        () => {},
+        () => {},
+        () => {}
+      );
+
+      if (!url) {
+        logError("[useScreenCapture] No URL returned from captureScreen");
+        return;
       }
-    }
 
-    if (captureCountRef.current >= captureCount) {
-      stopCapture();
+      logDebug(`[useScreenCapture] ✅ Screenshot uploaded to: ${url}`);
+
+      if (captureCountRef.current >= captureCount) {
+        stopCapture();
+      }
+    } catch (err) {
+      logError("[useScreenCapture] Error during capture", err);
     }
-  }, [status, autoUpload, offline, captureCount, stopCapture]);
+  }, [status, stopCapture, captureCount]);
 
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
@@ -88,30 +92,33 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
 
     try {
       const stream = await requestMediaPermission(configRef);
-      if (stream) {
-        mediaStreamRef.current = stream;
-        logDebug("[useScreenCapture] 🎥 Stream initialisé");
-        setStatus("active");
-        setCountdown(interval);
-
-        timerRef.current = setInterval(() => {
-          setCountdown(prev => {
-            if (prev <= 1) {
-              logDebug("[useScreenCapture] Countdown reached threshold, triggering capture callback");
-              takeScreenshot();
-              return interval;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
+      if (!stream) {
         setStatus("error");
+        return;
       }
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error("Unknown error"));
+
+      mediaStreamRef.current = stream;
+      logDebug("[useScreenCapture] 🎥 Stream initialisé");
+
+      setStatus("active");
+      setCountdown(interval);
+
+      timerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            logDebug("[useScreenCapture] Countdown reached 0, triggering capture");
+            takeScreenshot();
+            return interval;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      logError("[useScreenCapture] Error while initializing capture", err);
+      setError(err instanceof Error ? err : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, configRef, interval, takeScreenshot]);
+  }, [status, interval, takeScreenshot]);
 
   const toggleCapture = useCallback(() => {
     logDebug("[useScreenCapture] Toggle requested, current status:", status);
@@ -128,7 +135,9 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       initCapture();
     }
 
-    return () => stopCapture();
+    return () => {
+      stopCapture();
+    };
   }, [autoStart, status, suppressPermissionPrompt, initCapture, stopCapture]);
 
   const getDiagnostics = useCallback(() => ({
