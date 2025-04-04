@@ -54,7 +54,7 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
 
   const takeScreenshot = useCallback(async () => {
     if (status !== "active" || !mediaStreamRef.current) {
-      logDebug("[Capture] Skipping screenshot - not active or no stream");
+      logDebug("[Capture] Cannot take screenshot - system not running or no stream");
       return;
     }
 
@@ -86,14 +86,13 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
     try {
       setStatus("requesting-permission");
 
-      const stream = await requestMediaPermission(configRef);
+      const stream = await requestMediaPermission(configRef.current); // ✅ FIX ICI
       if (!stream) throw new Error("Permission refusée ou stream vide");
 
       mediaStreamRef.current = stream;
       setStatus("active");
       setCountdown(interval);
 
-      // Start countdown timer
       intervalRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -151,4 +150,3 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
     getDiagnostics,
   };
 };
-
