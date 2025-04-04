@@ -11,7 +11,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
 
-  // On récupère l'état du réseau
+  // Récupération de l'état du réseau
   const networkStatus = useNetworkStatus();
   
   // Vérification des variables d'environnement au chargement

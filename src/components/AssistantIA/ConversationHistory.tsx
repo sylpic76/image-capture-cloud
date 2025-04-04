@@ -19,10 +19,16 @@ interface ConversationItem {
 interface ConversationHistoryProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  loadConversation: (messages: Message[], projectName: string) => void;
+  loadConversation: (messages: Message[], projectName?: string) => void;
+  setCurrentProject: (project: string) => void;
 }
 
-const ConversationHistory = ({ isOpen, onOpenChange, loadConversation }: ConversationHistoryProps) => {
+const ConversationHistory = ({ 
+  isOpen, 
+  onOpenChange, 
+  loadConversation,
+  setCurrentProject 
+}: ConversationHistoryProps) => {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -41,13 +47,13 @@ const ConversationHistory = ({ isOpen, onOpenChange, loadConversation }: Convers
         throw error;
       }
       
-      // Map data to include correct project_name
+      // Map data to include correct project_name and cast messages
       const conversationsWithProject = data.map(item => ({
         id: item.id,
         created_at: item.created_at,
-        messages: item.messages,
+        messages: Array.isArray(item.messages) ? item.messages : [],
         project_name: item.project_name || 'Default Project'
-      }));
+      })) as ConversationItem[];
       
       setConversations(conversationsWithProject);
     } catch (error) {
@@ -85,6 +91,7 @@ const ConversationHistory = ({ isOpen, onOpenChange, loadConversation }: Convers
   // Load a conversation
   const handleLoadConversation = (conversation: ConversationItem) => {
     loadConversation(conversation.messages, conversation.project_name);
+    setCurrentProject(conversation.project_name);
     onOpenChange(false);
     toast.success('Conversation chargée');
   };

@@ -23,7 +23,7 @@ interface ChatHeaderProps {
   clearConversation: () => void;
   useScreenshots: boolean;
   setUseScreenshots: (use: boolean) => void;
-  loadConversation?: (messages: Message[]) => void;
+  loadConversation?: (messages: Message[], projectName?: string) => void;
   currentProject?: string;
   setCurrentProject?: (project: string) => void;
   networkStatus?: 'online' | 'offline' | 'uncertain';
@@ -42,6 +42,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
   const [editingProject, setEditingProject] = useState(false);
   const [projectName, setProjectName] = useState(currentProject);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const handleProjectSave = () => {
     if (setCurrentProject && projectName.trim()) {
@@ -122,10 +123,24 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
       
       <div className="flex items-center gap-2">
         {loadConversation && setCurrentProject && (
-          <ConversationHistory 
-            loadConversation={loadConversation} 
-            setCurrentProject={setCurrentProject} 
-          />
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsHistoryOpen(true)}
+              className="flex gap-2"
+            >
+              <BookIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Historique</span>
+            </Button>
+            
+            <ConversationHistory
+              isOpen={isHistoryOpen}
+              onOpenChange={setIsHistoryOpen}
+              loadConversation={loadConversation}
+              setCurrentProject={setCurrentProject}
+            />
+          </>
         )}
         
         <Button 

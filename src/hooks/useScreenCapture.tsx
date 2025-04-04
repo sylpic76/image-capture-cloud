@@ -1,14 +1,16 @@
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { captureScreen } from "./screenCapture/captureScreen";
-import { useCaptureState } from "./screenCapture/useCaptureState";
-import { useTimer } from "./screenCapture/useTimer";
-import { useMediaStream } from "./screenCapture/useMediaStream";
-import { useDiagnostics } from "./screenCapture/useDiagnostics";
 import { uploadScreenshot } from "./screenCapture/utils/uploadUtils";
 import { fetchLatestScreenshot } from "@/utils/screenshotUtils";
 import { ImageProcessingStatus } from "@/types/assistant";
+import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types";
+import { createLogger } from "./screenCapture/logger";
+import { requestMediaPermission, stopMediaTracks } from "./screenCapture/mediaStream";
+import { lockConfiguration } from "./screenCapture/config";
+
+const { logDebug, logError } = createLogger();
 
 export interface CaptureConfig {
   autoStart?: boolean;
@@ -19,22 +21,26 @@ export interface CaptureConfig {
   suppressPermissionPrompt?: boolean;
 }
 
-type CaptureState = "idle" | "running" | "countdown" | "capturing" | "paused" | "error";
-
 /**
  * Hook to capture screenshots from display
  */
 export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) => {
-  const captureState = useCaptureState();
-  const { startTimer, stopTimer, remainingTime } = useTimer();
-  const { getDisplayMedia, stream, releaseStream } = useMediaStream();
-  const { trackDiagnostics, getDiagnostics } = useDiagnostics();
-  
-  const [status, setStatus] = useState<CaptureState>("idle");
+  // State and refs
+  const [status, setStatus] = useState<ScreenCaptureStatus>("idle");
   const [countdown, setCountdown] = useState(countdownSeconds);
   const [error, setError] = useState<Error | null>(null);
   const [sdkDisabled, setSdkDisabled] = useState(false);
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>('idle');
+  
+  // References to maintain state between renders
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const captureCountRef = useRef<number>(0);
+  const successCountRef = useRef<number>(0);
+  const failureCountRef = useRef<number>(0);
+  const mountedRef = useRef<boolean>(true);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const permissionAttemptRef = useRef<boolean>(false);
+  const permissionInProgressRef = useRef<boolean>(false);
   
   // Configuration defaults
   const {
@@ -45,13 +51,61 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
     offline = false,
     suppressPermissionPrompt = false,
   } = config || {};
+
+  // Initialize the capture config
+  const configRef = useRef<ScreenCaptureConfig>(lockConfiguration({
+    useLowResolution: true,
+    captureWithAudio: false,
+    disableAdvancedSDK: suppressPermissionPrompt
+  }));
+  
+  /**
+   * Start timer for countdown or regular captures
+   */
+  const startTimer = useCallback((duration: number, interval: number, callback: (remaining: number) => void) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    
+    let remaining = duration;
+    
+    const tick = () => {
+      if (!mountedRef.current) return;
+      
+      remaining -= 1;
+      callback(remaining);
+      
+      if (remaining > 0) {
+        timerRef.current = setTimeout(tick, interval);
+      }
+    };
+    
+    timerRef.current = setTimeout(tick, interval);
+    
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+  
+  /**
+   * Stop timer
+   */
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
   
   /**
    * Initialize capture system
    */
   const initCapture = useCallback(async () => {
     try {
-      if (status === "running" || status === "countdown" || status === "capturing") {
+      if (status === "active" || status === "requesting-permission") {
         console.log("[Capture] Already running, skipping initialization");
         return;
       }
@@ -62,117 +116,161 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
         return;
       }
       
-      setStatus("countdown");
+      setStatus("requesting-permission");
       setCountdown(countdownSeconds);
       
-      console.log(`[Capture] Starting countdown from ${countdownSeconds} seconds`);
+      console.log(`[Capture] Starting permission request`);
       
-      startTimer(countdownSeconds, 1000, async (remaining) => {
-        setCountdown(remaining);
+      // Get display media stream
+      permissionInProgressRef.current = true;
+      permissionAttemptRef.current = true;
+      
+      try {
+        // Request media permissions
+        const stream = await requestMediaPermission(configRef);
         
-        if (remaining === 0) {
-          try {
-            setStatus("capturing");
-            
-            // Get display media stream
-            const displayStream = await getDisplayMedia();
-            
-            if (!displayStream) {
-              throw new Error("Failed to get display media stream");
-            }
-
-            captureState.setCaptureActive(true);
-            captureState.setStream(displayStream);
-            setStatus("running");
-            
-            // Log success
-            console.log("[Capture] System initialized successfully");
-            toast.success("Capture d'écran initialisée");
-            
-            // Take first screenshot
-            await takeScreenshot();
-            
-          } catch (error) {
-            console.error("[Capture] Error during initialization:", error);
-            handleCaptureError(error);
-          }
+        if (!stream) {
+          throw new Error("Failed to get display media stream");
         }
-      });
+        
+        if (!mountedRef.current) {
+          logDebug("Component unmounted during permission request, cleaning up");
+          stopMediaTracks(stream);
+          permissionInProgressRef.current = false;
+          return;
+        }
+        
+        // Success: set up stream and start capture
+        logDebug("Screen capture permission granted");
+        
+        // Set up handlers for when user stops sharing
+        stream.getVideoTracks().forEach(track => {
+          track.onended = () => {
+            logDebug("User stopped sharing screen");
+            if (mountedRef.current) {
+              stopCapture();
+            }
+          };
+        });
+        
+        // Store the stream reference
+        mediaStreamRef.current = stream;
+        
+        // Set active status and restart countdown
+        setStatus("active");
+        setCountdown(countdownSeconds);
+        setError(null);
+        
+        // Start countdown to first capture
+        startTimer(countdownSeconds, 1000, (remaining) => {
+          setCountdown(remaining);
+          
+          if (remaining === 0) {
+            takeScreenshot();
+          }
+        });
+        
+        permissionInProgressRef.current = false;
+        console.log("[Capture] System initialized successfully");
+        toast.success("Capture d'écran initialisée");
+        
+      } catch (err) {
+        permissionInProgressRef.current = false;
+        throw err;
+      }
       
     } catch (error) {
       console.error("[Capture] Initialization error:", error);
       handleCaptureError(error);
     }
-  }, [status, countdownSeconds, suppressPermissionPrompt, startTimer, getDisplayMedia]);
+  }, [status, countdownSeconds, suppressPermissionPrompt, startTimer]);
   
   /**
    * Take a screenshot
    */
   const takeScreenshot = useCallback(async () => {
-    if (status !== "running" || !captureState.stream) {
+    if (status !== "active" || !mediaStreamRef.current) {
       console.log("[Capture] Cannot take screenshot - system not running or no stream");
       return;
     }
     
-    setStatus("capturing");
+    console.log("[Capture] Capturing screenshot...");
     
     try {
-      console.log("[Capture] Capturing screenshot...");
-      trackDiagnostics("capture-start");
+      const currentStream = mediaStreamRef.current;
+      
+      // Increment the capture counter
+      const captureId = captureCountRef.current + 1;
+      captureCountRef.current = captureId;
+      
+      console.log(`[Capture] Taking screenshot #${captureId}`);
       
       // Capture the screen
-      const { blob, base64 } = await captureScreen(captureState.stream);
+      const imageUrl = await captureScreen(
+        currentStream,
+        status,
+        () => captureCountRef.current,
+        () => { successCountRef.current += 1; },
+        () => { failureCountRef.current += 1; },
+        (url) => {
+          console.log(`[Capture] Setting last capture URL: ${url.substring(0, 50)}...`);
+        }
+      );
       
-      trackDiagnostics("capture-complete");
-      
-      // Store locally or upload
-      if (autoUpload && !offline) {
-        console.log("[Capture] Uploading screenshot...");
-        trackDiagnostics("upload-start");
-        
-        await uploadScreenshot(blob);
-        
-        trackDiagnostics("upload-complete");
+      // if image upload is enabled and we're not in offline mode
+      if (autoUpload && !offline && imageUrl) {
+        console.log("[Capture] Auto-uploading captured image");
         
         // Fetch back the latest screenshot
         try {
-          // Correct call with one parameter to match function definition
           await fetchLatestScreenshot(setImageProcessingStatus);
-        } catch (error) {
-          console.error("[Capture] Error fetching latest screenshot:", error);
+        } catch (err) {
+          console.error("[Capture] Error fetching latest screenshot:", err);
         }
-        
-        console.log("[Capture] Screenshot uploaded successfully");
-      } else {
-        console.log("[Capture] Screenshot captured (not uploaded - offline mode)");
       }
       
-      setStatus("running");
+      // Reset countdown for next capture
+      setCountdown(Math.floor(interval / 1000));
+      
+      // Start timer for next capture
+      startTimer(Math.floor(interval / 1000), 1000, (remaining) => {
+        setCountdown(remaining);
+        
+        if (remaining === 0) {
+          takeScreenshot();
+        }
+      });
+      
+      return imageUrl;
       
     } catch (error) {
       console.error("[Capture] Screenshot error:", error);
       handleCaptureError(error);
+      return null;
     }
-  }, [status, captureState.stream, autoUpload, offline, trackDiagnostics]);
+  }, [status, interval, startTimer]);
   
   /**
    * Stop the capture system
    */
   const stopCapture = useCallback(() => {
     stopTimer();
-    releaseStream();
-    captureState.setCaptureActive(false);
-    captureState.setStream(null);
+    
+    if (mediaStreamRef.current) {
+      stopMediaTracks(mediaStreamRef.current);
+      mediaStreamRef.current = null;
+    }
+    
     setStatus("idle");
     console.log("[Capture] System stopped");
     toast.info("Capture arrêtée");
-  }, [stopTimer, releaseStream, captureState]);
+  }, [stopTimer]);
   
   /**
    * Toggle the capture state
    */
   const toggleCapture = useCallback(() => {
-    if (status === "idle") {
+    if (status === "idle" || status === "error") {
       initCapture();
     } else {
       stopCapture();
@@ -184,9 +282,11 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
    */
   const handleCaptureError = useCallback((error: any) => {
     stopTimer();
-    releaseStream();
-    captureState.setCaptureActive(false);
-    captureState.setStream(null);
+    
+    if (mediaStreamRef.current) {
+      stopMediaTracks(mediaStreamRef.current);
+      mediaStreamRef.current = null;
+    }
     
     setStatus("error");
     setError(error instanceof Error ? error : new Error(String(error)));
@@ -207,7 +307,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
         description: errorMessage.substring(0, 100),
       });
     }
-  }, [stopTimer, releaseStream, captureState]);
+  }, [stopTimer]);
   
   // Auto-start on mount if configured
   useEffect(() => {
@@ -216,14 +316,39 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
       initCapture();
     }
     
-    // Stop the capture when the component unmounts
+    // Clean up on unmount
     return () => {
-      if (status !== "idle") {
-        console.log("[Capture] Cleaning up...");
-        stopCapture();
+      mountedRef.current = false;
+      
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      if (mediaStreamRef.current) {
+        stopMediaTracks(mediaStreamRef.current);
+        mediaStreamRef.current = null;
       }
     };
   }, [autoStart, initCapture, status, suppressPermissionPrompt, stopCapture]);
+  
+  // Function to get diagnostic information
+  const getDiagnostics = useCallback(() => {
+    return {
+      status,
+      countdown,
+      hasMediaStream: !!mediaStreamRef.current,
+      lastError: error?.message || null,
+      captures: captureCountRef.current,
+      successful: successCountRef.current,
+      failed: failureCountRef.current,
+      configuration: {...configRef.current},
+      browserInfo: navigator.userAgent,
+      isSdkDisabled: configRef.current.disableAdvancedSDK,
+      permissionAttempted: permissionAttemptRef.current,
+      permissionInProgress: permissionInProgressRef.current
+    };
+  }, [status, countdown, error]);
   
   return {
     status,
@@ -233,7 +358,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
     initCapture,
     stopCapture,
     toggleCapture,
-    isActive: captureState.captureActive,
+    isActive: status === "active",
     sdkDisabled,
     getDiagnostics,
   };
