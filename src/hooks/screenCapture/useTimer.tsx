@@ -10,7 +10,7 @@ const { logDebug } = createLogger();
 export const useTimer = (
   intervalSeconds: number,
   status: string,
-  captureCallback: () => Promise<void>
+  captureCallback: () => Promise<any>  // Changed from Promise<void> to Promise<any> to accept any Promise return type
 ) => {
   const [countdown, setCountdown] = useState<number>(intervalSeconds);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -52,7 +52,9 @@ export const useTimer = (
         // Trigger capture when countdown reaches 1
         if (prevCountdown <= 1 && isMountedRef.current) {
           logDebug("Countdown reached threshold, triggering capture callback");
-          captureCallback();
+          captureCallback().catch(error => {
+            logDebug(`Error in capture callback: ${error.message}`);
+          });
         }
         
         return newCountdown;

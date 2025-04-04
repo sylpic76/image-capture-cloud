@@ -92,7 +92,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
   const takeScreenshot = useCallback(async () => {
     if (status !== "active" || !mediaStreamRef.current) {
       logDebug("[Capture] Cannot take screenshot - system not running or no stream");
-      return;
+      return null;
     }
     
     logDebug("[Capture] Capturing screenshot...");
@@ -147,7 +147,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
   const { countdown: timerCountdown, setCountdown: setTimerCountdown } = useTimer(
     intervalSeconds,
     status,
-    takeScreenshot
+    takeScreenshot  // Now this is compatible with useTimer's expected type
   );
   
   // Synchroniser le compte à rebours entre useTimer et useScreenCapture
