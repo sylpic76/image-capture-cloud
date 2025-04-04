@@ -26,6 +26,7 @@ const UnifiedApp = () => {
     isLoading,
     handleSubmit,
     saveConversation,
+    loadConversation,
     clearConversation,
     imageProcessingStatus,
     currentProject,
@@ -130,6 +131,7 @@ const UnifiedApp = () => {
         currentProject={currentProject}
         setCurrentProject={setCurrentProject}
         networkStatus={networkStatus}
+        loadConversation={loadConversation}
       />
     );
   }
@@ -159,6 +161,7 @@ const UnifiedApp = () => {
           handleSubmit={handleSubmit}
           saveConversation={saveConversation}
           clearConversation={clearConversation}
+          loadConversation={loadConversation}
           useScreenshots={useScreenshots}
           setUseScreenshots={setUseScreenshots}
           setIsOptionsOpen={setIsOptionsOpen}

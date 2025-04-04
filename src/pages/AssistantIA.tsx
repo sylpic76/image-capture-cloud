@@ -19,6 +19,7 @@ const AssistantIA = () => {
     isLoading,
     handleSubmit,
     saveConversation,
+    loadConversation,
     clearConversation,
     imageProcessingStatus,
     currentProject,
@@ -64,6 +65,7 @@ const AssistantIA = () => {
           setUseScreenshots={setUseScreenshots}
           currentProject={currentProject}
           setCurrentProject={setCurrentProject}
+          loadConversation={loadConversation}
         />
 
         <CardContent className="flex-grow pb-0 overflow-hidden">

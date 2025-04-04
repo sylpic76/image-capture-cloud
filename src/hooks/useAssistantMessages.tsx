@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { ImageProcessingStatus } from '@/types/assistant';
+import { ImageProcessingStatus, Message } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
 import { useNetworkStatus } from './useNetworkStatus';
 import { handleMessageSubmission } from '@/utils/messageHandlingUtils';
@@ -38,6 +38,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     addAssistantMessage,
     addErrorMessage,
     saveConversation,
+    loadConversation,
     clearConversation
   } = useConversationState();
 
@@ -69,6 +70,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     isLoading,
     handleSubmit,
     saveConversation,
+    loadConversation,
     clearConversation,
     imageProcessingStatus,
     currentProject,

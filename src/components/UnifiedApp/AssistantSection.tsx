@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ChatHeader from "@/components/AssistantIA/ChatHeader";
 import ChatContainer from "@/components/AssistantIA/ChatContainer";
 import ChatForm from "@/components/AssistantIA/ChatForm";
-import { ImageProcessingStatus } from "@/types/assistant";
+import { ImageProcessingStatus, Message } from "@/types/assistant";
 
 interface AssistantSectionProps {
   messages: any[];
@@ -14,6 +14,7 @@ interface AssistantSectionProps {
   handleSubmit: (e: React.FormEvent) => void;
   saveConversation: () => void;
   clearConversation: () => void;
+  loadConversation?: (messages: Message[]) => void;
   useScreenshots: boolean;
   setUseScreenshots: (use: boolean) => void;
   setIsOptionsOpen: (isOpen: boolean) => void;
@@ -31,6 +32,7 @@ const AssistantSection = ({
   handleSubmit,
   saveConversation,
   clearConversation,
+  loadConversation,
   useScreenshots,
   setUseScreenshots,
   setIsOptionsOpen,
@@ -50,6 +52,7 @@ const AssistantSection = ({
           setUseScreenshots={setUseScreenshots}
           currentProject={currentProject}
           setCurrentProject={setCurrentProject}
+          loadConversation={loadConversation}
           networkStatus={networkStatus}
         />
         

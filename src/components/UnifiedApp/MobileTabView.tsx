@@ -7,6 +7,7 @@ import ChatContainer from "@/components/AssistantIA/ChatContainer";
 import ChatForm from "@/components/AssistantIA/ChatForm";
 import ChatHeader from "@/components/AssistantIA/ChatHeader";
 import EndpointLink from "@/components/EndpointLink";
+import { Message } from "@/types/assistant";
 
 interface MobileTabViewProps {
   status: string;
@@ -19,6 +20,7 @@ interface MobileTabViewProps {
   handleSubmit: (e: React.FormEvent) => void;
   saveConversation: () => void;
   clearConversation: () => void;
+  loadConversation?: (messages: Message[]) => void;
   useScreenshots: boolean;
   setUseScreenshots: (use: boolean) => void;
   setIsOptionsOpen: (isOpen: boolean) => void;
@@ -47,6 +49,7 @@ const MobileTabView = ({
   handleSubmit,
   saveConversation,
   clearConversation,
+  loadConversation,
   useScreenshots,
   setUseScreenshots,
   setIsOptionsOpen,
@@ -124,6 +127,7 @@ const MobileTabView = ({
               setUseScreenshots={setUseScreenshots}
               currentProject={currentProject}
               setCurrentProject={setCurrentProject}
+              loadConversation={loadConversation}
               networkStatus={networkStatus}
             />
             

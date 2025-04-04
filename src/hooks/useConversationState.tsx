@@ -59,7 +59,10 @@ export function useConversationState(initialProjectName: string = 'Default Proje
    */
   const saveConversation = async () => {
     try {
-      if (messages.length === 0) return;
+      if (messages.length === 0) {
+        toast.info('Aucune conversation à sauvegarder.');
+        return;
+      }
       
       await saveConversationToSupabase(messages, currentProject);
       toast.success('Conversation sauvegardée avec succès');
@@ -67,6 +70,13 @@ export function useConversationState(initialProjectName: string = 'Default Proje
       console.error('Error saving conversation:', error);
       toast.error('Erreur lors de la sauvegarde de la conversation');
     }
+  };
+  
+  /**
+   * Load an existing conversation
+   */
+  const loadConversation = (loadedMessages: Message[]) => {
+    setMessages(loadedMessages);
   };
   
   /**
@@ -87,6 +97,7 @@ export function useConversationState(initialProjectName: string = 'Default Proje
     addAssistantMessage,
     addErrorMessage,
     saveConversation,
+    loadConversation,
     clearConversation
   };
 }
