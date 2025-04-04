@@ -124,6 +124,7 @@ export const fetchLatestScreenshot = async (
     }
     
     console.log(`Got signed URL: ${data.url.substring(0, 50)}...`);
+    console.log(`Full response data:`, data);
     
     // Now fetch the actual image using the signed URL
     const imageResponse = await fetch(data.url, {

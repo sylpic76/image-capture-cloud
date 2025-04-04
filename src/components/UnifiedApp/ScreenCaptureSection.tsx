@@ -61,6 +61,9 @@ const ScreenCaptureSection = ({
 
       const data = await response.json();
       
+      // Log the full response for debugging
+      console.log('Last capture response:', data);
+      
       if (!data.url) {
         console.error('Invalid response from server:', data);
         toast.error("Format de réponse invalide");
