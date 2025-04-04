@@ -8,12 +8,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/types/assistant';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Json } from '@/integrations/supabase/types';
 
 interface ConversationItem {
   id: string;
   created_at: string;
   messages: Message[];
   project_name: string;
+}
+
+// Type for raw data from Supabase
+interface RawConversationData {
+  id: string;
+  created_at: string;
+  messages: Json;
+  project_name?: string;
 }
 
 interface ConversationHistoryProps {
@@ -48,12 +57,19 @@ const ConversationHistory = ({
       }
       
       // Map data to include correct project_name and cast messages
-      const conversationsWithProject = data.map(item => ({
+      const conversationsWithProject = (data as RawConversationData[]).map(item => ({
         id: item.id,
         created_at: item.created_at,
-        messages: Array.isArray(item.messages) ? item.messages : [],
+        messages: Array.isArray(item.messages) 
+          ? item.messages.map((msg: any) => ({
+              id: msg.id || '',
+              role: msg.role || 'user',
+              content: msg.content || '',
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+            }))
+          : [],
         project_name: item.project_name || 'Default Project'
-      })) as ConversationItem[];
+      }));
       
       setConversations(conversationsWithProject);
     } catch (error) {
