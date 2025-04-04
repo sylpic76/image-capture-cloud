@@ -130,6 +130,7 @@ export const useScreenCapture = (countdownSeconds = 3, config?: CaptureConfig) =
         const stream = await requestMediaPermission(configRef);
         
         if (!stream) {
+          permissionInProgressRef.current = false;
           throw new Error("Failed to get display media stream");
         }
         

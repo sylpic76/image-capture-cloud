@@ -57,6 +57,7 @@ export const useMediaStream = (
       const stream = await requestMediaPermission(configRef);
       
       if (!stream) {
+        permissionInProgressRef.current = false;
         throw new Error("Failed to obtain media stream");
       }
       
