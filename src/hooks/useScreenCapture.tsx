@@ -45,7 +45,7 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
   }));
 
   const stopCapture = useCallback(() => {
-    logDebug("[Capture] System stopped");
+    logDebug("[useScreenCapture] Stopping capture");
     if (intervalRef.current) clearInterval(intervalRef.current);
     stopMediaTracks(mediaStreamRef.current);
     mediaStreamRef.current = null;
@@ -53,14 +53,17 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
   }, []);
 
   const takeScreenshot = useCallback(async () => {
-    if (status !== "active" || !mediaStreamRef.current) {
-      logDebug("[Capture] Cannot take screenshot — status:", status, "stream?", !!mediaStreamRef.current);
+    const stream = mediaStreamRef.current;
+    if (status !== "active" || !stream || !stream.active) {
+      logDebug("[useScreenCapture] ❌ Cannot take screenshot — status:", status, "| stream:", !!stream, "| stream.active:", stream?.active);
       return;
     }
 
+    logDebug("[useScreenCapture] ✅ Triggering capture...");
+
     try {
       await captureScreen(
-        mediaStreamRef.current,
+        stream,
         status,
         () => ++captureCountRef.current,
         () => {},
@@ -69,11 +72,11 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
       );
 
       if (captureCountRef.current >= captureCount) {
-        logDebug("[Capture] Max capture count reached, stopping");
+        logDebug("[useScreenCapture] Max captures reached. Stopping...");
         stopCapture();
       }
     } catch (error) {
-      logError("[Capture] Screenshot error:", error);
+      logError("[useScreenCapture] Capture failed", error);
       setError(error instanceof Error ? error : new Error("Unknown error"));
       toast.error("Erreur lors de la capture");
       stopCapture();
@@ -82,14 +85,14 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
 
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
+    setStatus("requesting-permission");
 
     try {
-      setStatus("requesting-permission");
       const stream = await requestMediaPermission(configRef.current);
-      if (!stream || !stream.active) throw new Error("Permission refusée ou stream vide");
+      if (!stream || !stream.active) throw new Error("Permission refusée ou stream inactif");
 
       mediaStreamRef.current = stream;
-      logDebug("[Capture] mediaStreamRef initialisé avec succès");
+      logDebug("[useScreenCapture] 🎥 Stream initialisé");
 
       setStatus("active");
       setCountdown(interval);
@@ -98,6 +101,7 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
       intervalRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
+            logDebug("[useScreenCapture] Countdown terminé → capture");
             takeScreenshot();
             return interval;
           }
@@ -105,14 +109,14 @@ export const useScreenCapture = (intervalSeconds = 10, config?: CaptureConfig) =
         });
       }, 1000);
     } catch (error) {
-      logError("[Capture] Init error", error);
+      logError("[useScreenCapture] Init error", error);
       setError(error instanceof Error ? error : new Error("Unknown error"));
       setStatus("error");
     }
   }, [status, interval, takeScreenshot]);
 
   const toggleCapture = useCallback(() => {
-    logDebug("[Capture] toggleCapture() called — status:", status);
+    logDebug("[useScreenCapture] Toggle requested, current status:", status);
     if (status === "active") {
       stopCapture();
       toast.info("Capture arrêtée");
