@@ -27,8 +27,8 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
   const [imageProcessingStatus, setImageProcessingStatus] = useState<ImageProcessingStatus>("idle");
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const captureCountRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     autoStart = true,
@@ -47,7 +47,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
 
   const stopCapture = useCallback(() => {
     logDebug("[useScreenCapture] Stopping capture");
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current); // 🛠️ FIX ici
     stopMediaTracks(mediaStreamRef.current);
     mediaStreamRef.current = null;
     setStatus("idle");
