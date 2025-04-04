@@ -1,36 +1,35 @@
+import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 export async function uploadScreenshot(blob: Blob, captureId?: number): Promise<string> {
-  const endpoint = `https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/capture-screenshot?t=${Date.now()}`;
-  const captureIdStr = captureId ? `#${captureId}` : '';
-  console.log(`[uploadScreenshot] 📤 Uploading capture ${captureIdStr} to ${endpoint}`);
+  const fileName = `screen_${new Date().toISOString()}.png`;
+  console.log(`[uploadScreenshot] 📤 Uploading ${fileName}`);
 
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": blob.type,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: blob,
+  const { data, error } = await supabase.storage
+    .from("screenshots")
+    .upload(fileName, blob, {
+      contentType: "image/png",
+      upsert: false,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[uploadScreenshot] ❌ HTTP ${response.status}: ${errorText}`);
-      throw new Error(`Upload failed: ${response.status}`);
-    }
-
-    const json = await response.json();
-    if (!json.url) {
-      throw new Error(`Réponse invalide : ${JSON.stringify(json)}`);
-    }
-
-    console.log(`[uploadScreenshot] ✅ Upload réussi : ${json.url}`);
-    return json.url;
-  } catch (err) {
-    console.error(`[uploadScreenshot] ❌ Erreur réseau :`, err);
-    throw err;
+  if (error) {
+    console.error("[uploadScreenshot] ❌ Upload failed", error);
+    return null;
   }
+
+  const { data: signed } = await supabase.storage
+    .from("screenshots")
+    .createSignedUrl(fileName, 3600); // valid 1h
+
+  if (!signed?.signedUrl) {
+    console.error("[uploadScreenshot] ❌ Could not get signed URL");
+    return null;
+  }
+
+  console.log(`[uploadScreenshot] ✅ Uploaded & signed: ${signed.signedUrl}`);
+  return signed.signedUrl;
 }
