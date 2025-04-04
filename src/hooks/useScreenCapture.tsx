@@ -167,11 +167,11 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     } catch (err) {
       if (!mountedRef.current) return;
       
-      logError("[useScreenCapture] Error while initializing capture", err);
+      logError("[useScreenCapture] Error while initializing capture", err instanceof Error ? err : new Error("Unknown error"));
       setError(err instanceof Error ? err : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, interval, takeScreenshot, stopCapture]);
+  }, [status, interval, takeScreenshot]);
 
   // Toggle la capture (start/stop)
   const toggleCapture = useCallback(() => {
