@@ -14,7 +14,7 @@ interface AssistantSectionProps {
   handleSubmit: (e: React.FormEvent) => void;
   saveConversation: () => void;
   clearConversation: () => void;
-  loadConversation?: (messages: Message[]) => void;
+  loadConversation?: (messages: Message[], projectName?: string) => void;
   useScreenshots: boolean;
   setUseScreenshots: (use: boolean) => void;
   setIsOptionsOpen: (isOpen: boolean) => void;

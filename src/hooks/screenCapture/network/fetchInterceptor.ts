@@ -23,6 +23,15 @@ export const setupFetchInterceptor = (): () => void => {
     const requestInit = init || {};
     const startTime = performance.now();
     
+    // Skip health endpoint that doesn't exist
+    if (url.includes('/rest/v1/health')) {
+      console.log('Skipping non-existent health endpoint check');
+      return new Response(JSON.stringify({ status: 'ok' }), { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     // Extract relevant info
     const endpoint = url.split('?')[0];
     

@@ -1,9 +1,10 @@
 
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export async function uploadScreenshot(blob: Blob, captureId: number): Promise<string> {
+export async function uploadScreenshot(blob: Blob, captureId?: number): Promise<string> {
   const endpoint = `https://mvuccsplodgeomzqnwjs.supabase.co/functions/v1/capture-screenshot?t=${Date.now()}`;
-  console.log(`[uploadScreenshot] 📤 Uploading capture #${captureId} to ${endpoint}`);
+  const captureIdStr = captureId ? `#${captureId}` : '';
+  console.log(`[uploadScreenshot] 📤 Uploading capture ${captureIdStr} to ${endpoint}`);
 
   try {
     const response = await fetch(endpoint, {

@@ -5,6 +5,7 @@ import { ImageProcessingStatus, Message } from '@/types/assistant';
 import { useConversationState } from './useConversationState';
 import { useNetworkStatus } from './useNetworkStatus';
 import { handleMessageSubmission } from '@/utils/messageHandlingUtils';
+import { getApiEndpoint, checkRequiredEnvironmentVars } from '@/utils/networkUtils';
 
 export const useAssistantMessages = (useScreenshots: boolean = false) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,15 +17,10 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
   // Vérification des variables d'environnement au chargement
   useEffect(() => {
     // Vérifier si les variables d'environnement critiques sont présentes
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      console.error("Variables d'environnement manquantes pour l'assistant IA");
-      toast.error("Configuration incomplète", {
-        description: "Vérifiez les variables d'environnement VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY",
-        duration: 10000
-      });
-    } else {
-      console.log("[Assistant] Variables d'environnement vérifiées ✓");
-      console.log(`[Assistant] URL API: ${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic-ai`);
+    checkRequiredEnvironmentVars();
+    
+    if (getApiEndpoint()) {
+      console.log(`[Assistant] URL API: ${getApiEndpoint()}`);
     }
   }, []);
 
@@ -41,6 +37,16 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     loadConversation,
     clearConversation
   } = useConversationState();
+
+  // Enhanced version to also handle the project name
+  const handleLoadConversation = (loadedMessages: Message[], projectName?: string) => {
+    loadConversation(loadedMessages);
+    
+    // If a project name is provided, update it
+    if (projectName) {
+      setCurrentProject(projectName);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +76,7 @@ export const useAssistantMessages = (useScreenshots: boolean = false) => {
     isLoading,
     handleSubmit,
     saveConversation,
-    loadConversation,
+    loadConversation: handleLoadConversation,
     clearConversation,
     imageProcessingStatus,
     currentProject,

@@ -21,6 +21,7 @@ export const checkRequiredEnvironmentVars = (): boolean => {
     return false;
   }
   
+  console.log("[Assistant] Variables d'environnement vérifiées ✓");
   return true;
 };
 
@@ -39,10 +40,32 @@ export const getApiEndpoint = (): string | null => {
   
   const url = `${baseUrl}/functions/v1/anthropic-ai`;
   
-  // Log the full URL to help with debugging
-  console.log(`[Assistant] Full API URL: ${url}`);
-  
   return url;
+};
+
+/**
+ * Check if the Supabase service is running and accessible
+ * Without using the non-existent health endpoint
+ */
+export const checkSupabaseStatus = async (): Promise<boolean> => {
+  try {
+    // Use an endpoint we know exists (functions endpoint)
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+    
+    const response = await fetch(url, {
+      method: 'OPTIONS',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Cache-Control': 'no-cache',
+      },
+    });
+    
+    // 204 is common for OPTIONS requests
+    return response.ok || response.status === 204;
+  } catch (error) {
+    console.error("Error checking Supabase status:", error);
+    return false;
+  }
 };
 
 /**
