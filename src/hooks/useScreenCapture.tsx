@@ -130,6 +130,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       if (!stream) {
         if (mountedRef.current) {
           setStatus("error");
+          setError(new Error("Failed to obtain media stream"));
         }
         return;
       }

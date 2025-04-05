@@ -65,9 +65,9 @@ export const requestMediaPermission = async (
 
   } catch (error) {
     if (error instanceof DOMException && error.name === "NotAllowedError") {
-      logError("User denied screen capture permission", error);
+      logError("User denied screen capture permission");
     } else {
-      logError("Failed to obtain media stream", error);
+      logError("Failed to obtain media stream");
     }
     return null;
   }
@@ -92,12 +92,12 @@ export const stopMediaTracks = (mediaStream: MediaStream | null): void => {
           logDebug(`Track ${track.id} already in state: ${track.readyState}`);
         }
       } catch (e) {
-        logError(`Error stopping track ${track.id}`, e);
+        logError(`Error stopping track ${track.id}`);
       }
     });
     
     logDebug("All tracks stopped successfully");
   } catch (error) {
-    logError("Error while stopping media tracks", error);
+    logError("Error while stopping media tracks");
   }
 };
