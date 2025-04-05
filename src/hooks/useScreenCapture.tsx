@@ -5,8 +5,8 @@ import { ImageProcessingStatus } from "@/types/assistant";
 import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types";
 import { createLogger } from "./screenCapture/logger";
 import { lockConfiguration } from "./screenCapture/config";
-import { useMediaStream } from "@/hooks/useMediaStream";
-import { useTimer } from "@/hooks/useTimer";
+import { useMediaStream } from "../useMediaStream";
+import { useTimer } from "../useTimer";
 
 const { logDebug, logError } = createLogger();
 
