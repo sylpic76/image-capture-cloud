@@ -91,7 +91,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
         toast.info("Nombre maximum de captures atteint");
       }
     } catch (e) {
-      logError("[useScreenCapture] Capture failed" + (e instanceof Error ? `: ${e.message}` : ""));
+      logError(`[useScreenCapture] Capture failed: ${e instanceof Error ? e.message : "Unknown error"}`);
       toast.error("Erreur pendant la capture");
     }
   }, [status, autoUpload, offline, captureCount]);

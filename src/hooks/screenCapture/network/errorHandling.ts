@@ -20,11 +20,7 @@ export const errorMessages: Record<number, string> = {
 export const handleHttpError = (url: string, status: number, statusText: string, responseTime: number) => {
   const errorMessage = errorMessages[status] || `Erreur ${status}: ${statusText}`;
   
-  logError(`Erreur réseau ${status} pour ${url}`, { 
-    status, 
-    statusText,
-    responseTime
-  });
+  logError(`Erreur réseau ${status} pour ${url} - ${statusText}, responseTime: ${responseTime}ms`);
   
   // Only show toast for non-background operations to avoid spamming
   const isBackground = url.includes('?t=');
@@ -41,14 +37,7 @@ export const handleFetchError = (url: string, error: Error) => {
   const errorName = error.name;
   const errorStack = error.stack;
   
-  logError(`Erreur réseau pour ${url}`, { 
-    error: errorMessage,
-    name: errorName,
-    stack: errorStack,
-    userAgent: navigator.userAgent,
-    online: navigator.onLine,
-    timeOrigin: performance.timeOrigin
-  });
+  logError(`Erreur réseau pour ${url} - ${errorMessage}, name: ${errorName}`);
   
   // Only show toast errors if it's not a background refresh
   const isBackground = url.includes('?t=');

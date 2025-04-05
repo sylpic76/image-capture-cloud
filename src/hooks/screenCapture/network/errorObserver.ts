@@ -10,7 +10,7 @@ export const setupErrorObserver = (): () => void => {
   // Intercept unhandled errors
   window.onerror = (message, source, line, column, error) => {
     if (source && (source.includes('anthropic-ai') || source.includes('capture-screenshot') || source.includes('screenCapture'))) {
-      logError(`Erreur non gérée: ${message}`, { source, line, column, error });
+      logError(`Erreur non gérée: ${message} - source: ${source}, line: ${line}, column: ${column}`);
     }
     return originalOnError ? originalOnError(message, source, line, column, error) : false;
   };

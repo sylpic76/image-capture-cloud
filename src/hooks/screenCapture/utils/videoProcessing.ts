@@ -34,14 +34,14 @@ export const prepareVideoElement = async (mediaStream: MediaStream): Promise<HTM
         })
         .catch(err => {
           clearTimeout(timeout);
-          logError("[videoProcessing] Error playing video", err);
+          logError(`[videoProcessing] Error playing video: ${err instanceof Error ? err.message : String(err)}`);
           reject(err);
         });
     };
 
     video.onerror = (err) => {
       clearTimeout(timeout);
-      logError("[videoProcessing] Error loading video", err);
+      logError(`[videoProcessing] Error loading video: ${err instanceof Event ? 'Event error' : String(err)}`);
       reject(err);
     };
   });
@@ -83,7 +83,7 @@ export const createCanvasFromVideo = async (video: HTMLVideoElement): Promise<Bl
         0.9 // quality
       );
     } catch (err) {
-      logError("[videoProcessing] Error converting canvas to blob", err);
+      logError(`[videoProcessing] Error converting canvas to blob: ${err instanceof Error ? err.message : String(err)}`);
       reject(err);
     }
   });
@@ -115,6 +115,6 @@ export const cleanupResources = (video: HTMLVideoElement): void => {
     
     logDebug("[videoProcessing] Resources cleaned up successfully");
   } catch (err) {
-    logError("[videoProcessing] Error cleaning up resources", err);
+    logError(`[videoProcessing] Error cleaning up resources: ${err instanceof Error ? err.message : String(err)}`);
   }
 };

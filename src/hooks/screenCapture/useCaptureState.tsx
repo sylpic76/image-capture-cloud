@@ -64,7 +64,7 @@ export const useCaptureState = (config: ScreenCaptureConfig) => {
   const setErrorStatus = useCallback((error: Error) => {
     setStatus('error');
     setLastError(error);
-    logError("Status set to: error", error);
+    logError(`Status set to: error - ${error.message}`);
   }, []);
   
   const setRequestingStatus = useCallback(() => {

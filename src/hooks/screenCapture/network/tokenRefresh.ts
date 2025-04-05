@@ -12,14 +12,14 @@ export const tryRefreshToken = async (): Promise<boolean> => {
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
-      logError("Échec du rafraîchissement du token", error);
+      logError(`Échec du rafraîchissement du token: ${error.message}`);
     } else if (data?.session) {
       logDebug("Token rafraîchi avec succès");
       toast.success("Authentification renouvelée");
       return true;
     }
   } catch (err) {
-    logError("Erreur lors du rafraîchissement du token", err);
+    logError(`Erreur lors du rafraîchissement du token: ${err instanceof Error ? err.message : String(err)}`);
   }
   return false;
 };
