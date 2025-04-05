@@ -26,6 +26,9 @@ export const useMediaStream = (
   
   // Clean up on unmount
   useEffect(() => {
+    // Reset the mounted ref to true when the component is mounted
+    mountedRef.current = true;
+    
     return () => {
       logDebug("Component unmounting, cleaning up resources");
       mountedRef.current = false;
@@ -35,10 +38,10 @@ export const useMediaStream = (
   
   // Request screen capture permission and set up stream
   const requestPermission = useCallback(async () => {
-    if (!mountedRef.current) {
-      logDebug("Component already unmounted, skipping permission request");
-      return false;
-    }
+    // Always assume we're mounted during the active request
+    // This fixes the issue where the permission dialog appears but the component
+    // is incorrectly considered unmounted
+    mountedRef.current = true;
     
     if (permissionInProgressRef.current) {
       logDebug("Permission request already in progress, skipping");
@@ -50,31 +53,18 @@ export const useMediaStream = (
       permissionAttemptRef.current = true;
       
       // Update UI state
-      if (mountedRef.current) {
-        setRequestingStatus();
-      }
+      setRequestingStatus();
       
       logDebug("Starting screen capture permission request...");
       
       // Request media permission with proper error handling
       const stream = await requestMediaPermission(configRef);
       
-      // Check if still mounted before proceeding
-      if (!mountedRef.current) {
-        logDebug("Component unmounted during permission request, cleaning up");
-        stopMediaTracks(stream);
-        permissionInProgressRef.current = false;
-        return false;
-      }
-      
-      // If no stream was returned but no error was thrown
+      // Check if stream was returned
       if (!stream) {
         logDebug("No stream returned but no error thrown");
         permissionInProgressRef.current = false;
-        
-        if (mountedRef.current) {
-          setErrorStatus(new Error("Failed to obtain media stream"));
-        }
+        setErrorStatus(new Error("Failed to obtain media stream"));
         return false;
       }
       
@@ -89,20 +79,14 @@ export const useMediaStream = (
         logDebug(`Setting up track ended handler for track: ${track.id}`);
         track.onended = () => {
           logDebug("User stopped sharing screen");
-          if (mountedRef.current) {
-            stopCapture();
-          }
+          stopCapture();
         };
       });
       
       // Set active status and explicitly set countdown to intervalSeconds
-      if (mountedRef.current) {
-        // Activons explicitement le statut
-        setActiveStatus();
-        // Make sure to reset the countdown with the correct value
-        logDebug(`Setting countdown to ${intervalSeconds} seconds after permission granted`);
-        setCountdown(intervalSeconds);
-      }
+      setActiveStatus();
+      logDebug(`Setting countdown to ${intervalSeconds} seconds after permission granted`);
+      setCountdown(intervalSeconds);
       
       permissionInProgressRef.current = false;
       return true;
@@ -110,21 +94,14 @@ export const useMediaStream = (
       // Always reset the permission flag, even on error
       permissionInProgressRef.current = false;
       
-      if (!mountedRef.current) {
-        logDebug("Component unmounted during error handling, ignoring error");
-        return false;
-      }
-      
       // Handle permission denied or other errors
       const errorMessage = `Screen capture permission error: ${error instanceof Error ? error.message : String(error)}`;
       logError(errorMessage);
       
-      if (mountedRef.current) {
-        if (error instanceof Error && error.name === "NotAllowedError") {
-          setErrorStatus(new Error("Permission denied for screen capture"));
-        } else {
-          setErrorStatus(error instanceof Error ? error : new Error(String(error)));
-        }
+      if (error instanceof Error && error.name === "NotAllowedError") {
+        setErrorStatus(new Error("Permission denied for screen capture"));
+      } else {
+        setErrorStatus(error instanceof Error ? error : new Error(String(error)));
       }
       
       return false;

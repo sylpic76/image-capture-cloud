@@ -160,8 +160,6 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   }, [status, initCapture, stopCapture]);
 
-  // Supprimé l'autoStart qui était auparavant ici
-
   // Nettoyage des ressources lors du démontage du composant
   useEffect(() => {
     return () => {
