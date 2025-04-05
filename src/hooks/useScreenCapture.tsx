@@ -53,7 +53,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
   const setErrorStatus = useCallback((err: Error) => {
     setError(err);
     setStatus("error");
-    logError("Status set to: error", err);
+    logError(`Status set to: error - ${err.message}`);
   }, []);
 
   const setRequestingStatus = useCallback(() => {
@@ -91,7 +91,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
         toast.info("Nombre maximum de captures atteint");
       }
     } catch (e) {
-      logError("[useScreenCapture] Capture failed", e);
+      logError("[useScreenCapture] Capture failed" + (e instanceof Error ? `: ${e.message}` : ""));
       toast.error("Erreur pendant la capture");
     }
   }, [status, autoUpload, offline, captureCount]);
