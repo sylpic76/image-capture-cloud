@@ -8,11 +8,10 @@ const { logDebug } = createLogger();
  * Hook to manage capture timer logic
  */
 export const useTimer = (
-  intervalSeconds: number,
   status: string,
   captureCallback: () => Promise<any>
 ) => {
-  const [countdown, setCountdown] = useState<number>(intervalSeconds);
+  const [countdown, setCountdown] = useState<number>(10); // Default to 10 seconds
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef<boolean>(true);
   const captureCallbackRef = useRef(captureCallback);
@@ -25,10 +24,10 @@ export const useTimer = (
   // Reset countdown when status changes to active
   useEffect(() => {
     if (status === 'active') {
-      logDebug(`Resetting countdown to ${intervalSeconds} seconds because status changed to active`);
-      setCountdown(intervalSeconds);
+      logDebug(`Resetting countdown because status changed to active`);
+      // We don't reset the countdown here as it's now handled by setCountdown from outside
     }
-  }, [status, intervalSeconds]);
+  }, [status]);
   
   // Set up the countdown timer
   useEffect(() => {
@@ -42,15 +41,15 @@ export const useTimer = (
       return;
     }
     
-    // Start a new timer only if status is active
-    logDebug(`Starting countdown timer with ${intervalSeconds} second interval`);
+    logDebug(`Starting countdown timer`);
     
     // Set up the interval timer - ONE interval only
     timerRef.current = setInterval(() => {
       if (!isMountedRef.current) return;
       
       setCountdown(prevCountdown => {
-        const newCountdown = prevCountdown <= 1 ? intervalSeconds : prevCountdown - 1;
+        // Get the new countdown value, cycling back to the initial value when it reaches 1
+        const newCountdown = prevCountdown <= 1 ? countdown : prevCountdown - 1;
         
         // Log the countdown change
         logDebug(`Countdown: ${prevCountdown} -> ${newCountdown}`);
@@ -77,7 +76,7 @@ export const useTimer = (
         timerRef.current = null;
       }
     };
-  }, [status, intervalSeconds]);
+  }, [status, countdown]);
   
   // Handle component unmount
   useEffect(() => {
