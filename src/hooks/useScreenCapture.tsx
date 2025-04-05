@@ -100,11 +100,9 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
   }, [status, autoUpload, offline, captureCount]);
 
   // Timer toutes les X secondes
-  const { countdown, setCountdown } = useTimer(() => {
-    if (status === "active") {
-      takeScreenshot();
-    }
-  });
+  const { countdown, setCountdown } = useTimer(
+    takeScreenshot
+  );
 
   // Initialiser stream / permission
   const {
