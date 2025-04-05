@@ -74,7 +74,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
 
     // Check if the status is active and if the stream is available
-    // FIX: Use type-safe comparison by checking against string literal
+    // FIX: Use type-safe comparison for string literal types
     if (status !== "active" || !mediaStreamRef.current) {
       logDebug("[useScreenCapture] Cannot take screenshot - system not running or no stream");
       return;
@@ -107,7 +107,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       }
     } catch (err) {
       captureInProgressRef.current = false;
-      // FIX: Use the correct number of arguments for logError
+      // FIX: Use the correct format for logError with a single argument
       logError("[useScreenCapture] Error during capture: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   }, [status, stopCapture, captureCount]);
@@ -170,7 +170,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     } catch (err) {
       if (!mountedRef.current) return;
       
-      // FIX: Use the correct number of arguments for logError
+      // FIX: Use the correct format for logError with a single argument
       logError("[useScreenCapture] Error while initializing capture: " + (err instanceof Error ? err.message : "Unknown error"));
       setError(err instanceof Error ? err : new Error("Unknown error"));
       setStatus("error");
