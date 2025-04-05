@@ -1,48 +1,56 @@
 
 import { createLogger } from '../logger';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from 'sonner';
 
 const { logDebug, logError } = createLogger();
 
-// Helper function to try refreshing the session token
-export const tryRefreshToken = async (): Promise<boolean> => {
+/**
+ * Utility to refresh auth tokens when needed
+ */
+export const refreshAuthToken = async (headers: Headers, url: string): Promise<Headers> => {
   try {
-    logDebug("Tentative de rafraîchissement du token...");
-    const { data, error } = await supabase.auth.refreshSession();
-    
-    if (error) {
-      logError(`Échec du rafraîchissement du token: ${error.message}`);
-    } else if (data?.session) {
-      logDebug("Token rafraîchi avec succès");
-      toast.success("Authentification renouvelée");
-      return true;
+    // Check if we need to refresh the token
+    if (shouldRefreshToken()) {
+      logDebug(`Refreshing auth token for request to ${url}`);
+      
+      // Fetch a new token from your auth service
+      const newToken = await fetchNewAuthToken();
+      
+      if (!newToken) {
+        logError(`Failed to refresh token for ${url}`);
+        return headers;
+      }
+      
+      // Update the headers with the new token
+      headers.set('Authorization', `Bearer ${newToken}`);
+      logDebug('Auth token refreshed successfully');
     }
-  } catch (err) {
-    logError(`Erreur lors du rafraîchissement du token: ${err instanceof Error ? err.message : String(err)}`);
+    
+    return headers;
+  } catch (error) {
+    logError(`Token refresh error for ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return headers;
   }
-  return false;
 };
 
-// Token refresh manager to prevent multiple simultaneous refresh attempts
-export class TokenRefreshManager {
-  private refreshTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  
-  // Schedule token refresh with debounce
-  scheduleRefresh(): void {
-    if (this.refreshTimeoutId) return;
-    
-    this.refreshTimeoutId = setTimeout(async () => {
-      await tryRefreshToken();
-      this.refreshTimeoutId = null;
-    }, 1000); // Small delay to avoid multiple refreshes
+/**
+ * Check if the current token needs to be refreshed
+ */
+const shouldRefreshToken = (): boolean => {
+  // Add your token expiration logic here
+  // For example, check if the token is expired or will expire soon
+  return false; // Placeholder
+};
+
+/**
+ * Fetch a new authentication token
+ */
+const fetchNewAuthToken = async (): Promise<string | null> => {
+  try {
+    // Add your token refresh logic here
+    // This would typically make a request to your auth server
+    return null; // Placeholder
+  } catch (error) {
+    logError(`Error fetching new auth token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return null;
   }
-  
-  // Clean up any pending refresh
-  cleanup(): void {
-    if (this.refreshTimeoutId) {
-      clearTimeout(this.refreshTimeoutId);
-      this.refreshTimeoutId = null;
-    }
-  }
-}
+};

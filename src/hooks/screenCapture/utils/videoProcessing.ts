@@ -4,49 +4,59 @@ import { createLogger } from '../logger';
 const { logDebug, logError } = createLogger();
 
 /**
- * Create and prepare a video element from a media stream
+ * Prepare a video element with the media stream
  */
 export const prepareVideoElement = async (mediaStream: MediaStream): Promise<HTMLVideoElement> => {
   return new Promise((resolve, reject) => {
     try {
       const video = document.createElement('video');
       
-      // Configure video element
-      video.autoplay = true;
-      video.muted = true;
-      video.playsInline = true;
+      // Set attributes needed for capture
+      video.setAttribute('autoplay', 'true');
+      video.setAttribute('playsinline', 'true');
+      video.style.position = 'absolute';
+      video.style.opacity = '0';
+      video.style.pointerEvents = 'none';
+      video.style.zIndex = '-1';
+      
+      // Add to DOM temporarily (some browsers need this)
+      document.body.appendChild(video);
+      
+      // Set up event handlers
+      const onLoadedMetadata = () => {
+        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+        video.play()
+          .then(() => {
+            setTimeout(() => resolve(video), 300); // Short delay for stability
+          })
+          .catch(playError => {
+            const errorMessage = `Failed to play video: ${playError instanceof Error ? playError.message : 'Unknown error'}`;
+            logError(errorMessage);
+            reject(new Error(errorMessage));
+          });
+      };
+      
+      const onError = (err: Event | string) => {
+        let errorMessage = 'Unknown video error';
+        if (typeof err === 'string') {
+          errorMessage = err;
+        } else if (err instanceof Event) {
+          errorMessage = `Video error: ${err.type}`;
+        }
+        logError(errorMessage);
+        reject(new Error(errorMessage));
+      };
+      
+      // Set up event listeners
+      video.addEventListener('loadedmetadata', onLoadedMetadata);
+      video.addEventListener('error', onError);
+      
+      // Set the source
       video.srcObject = mediaStream;
       
-      // When the video starts playing, we can capture it
-      video.onplaying = () => {
-        logDebug(`Video element ready: ${video.videoWidth}x${video.videoHeight}`);
-        resolve(video);
-      };
-      
-      // Handle errors
-      video.onerror = (event) => {
-        const errorMessage = `Error initializing video element: ${event.type}`;
-        logError(errorMessage);
-        reject(new Error(errorMessage));
-      };
-      
-      // Start playing the video
-      video.play().catch(err => {
-        const errorMessage = `Failed to play video: ${err.message}`;
-        logError(errorMessage);
-        reject(new Error(errorMessage));
-      });
-      
-      // Set a timeout in case onplaying never fires
-      setTimeout(() => {
-        if (video.readyState < 3) { // HAVE_FUTURE_DATA
-          const errorMessage = 'Video element timed out while initializing';
-          logError(errorMessage);
-          reject(new Error(errorMessage));
-        }
-      }, 5000);
-    } catch (err) {
-      const errorMessage = `Failed to create video element: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      logDebug(`Video element prepared with dimensions: ${video.videoWidth}x${video.videoHeight}`);
+    } catch (error) {
+      const errorMessage = `Failed to prepare video element: ${error instanceof Error ? error.message : 'Unknown error'}`;
       logError(errorMessage);
       reject(new Error(errorMessage));
     }
@@ -54,52 +64,52 @@ export const prepareVideoElement = async (mediaStream: MediaStream): Promise<HTM
 };
 
 /**
- * Create a canvas from the video and return as a blob
+ * Create a canvas from the video feed and convert to a blob
  */
 export const createCanvasFromVideo = async (video: HTMLVideoElement): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     try {
-      // Ensure video dimensions are valid
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        const errorMessage = 'Invalid video dimensions: Width or height is zero';
+      // Get dimensions
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      
+      if (!width || !height) {
+        const errorMessage = `Invalid video dimensions: ${width}x${height}`;
         logError(errorMessage);
-        reject(new Error(errorMessage));
-        return;
+        return reject(new Error(errorMessage));
       }
       
-      // Create canvas with video dimensions
+      // Create canvas at the same size as the video
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = width;
+      canvas.height = height;
       
-      // Draw video frame to canvas
+      // Draw the current video frame to the canvas
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         const errorMessage = 'Failed to get canvas context';
         logError(errorMessage);
-        reject(new Error(errorMessage));
-        return;
+        return reject(new Error(errorMessage));
       }
       
-      // Draw the video frame to the canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Draw video frame to canvas
+      ctx.drawImage(video, 0, 0, width, height);
       
-      // Convert canvas to blob
+      // Convert to blob
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            const errorMessage = 'Failed to convert canvas to blob';
+            const errorMessage = 'Failed to create blob from canvas';
             logError(errorMessage);
-            reject(new Error(errorMessage));
-            return;
+            return reject(new Error(errorMessage));
           }
           resolve(blob);
         },
         'image/png',
-        0.95 // Quality (0-1)
+        0.9 // Quality
       );
-    } catch (err) {
-      const errorMessage = `Error creating canvas from video: ${err instanceof Error ? err.message : 'Unknown error'}`;
+    } catch (error) {
+      const errorMessage = `Failed to create canvas from video: ${error instanceof Error ? error.message : 'Unknown error'}`;
       logError(errorMessage);
       reject(new Error(errorMessage));
     }
@@ -107,25 +117,35 @@ export const createCanvasFromVideo = async (video: HTMLVideoElement): Promise<Bl
 };
 
 /**
- * Clean up resources used by the video element
+ * Clean up resources after capture
  */
-export const cleanupResources = (video: HTMLVideoElement) => {
+export const cleanupResources = (video: HTMLVideoElement): void => {
   try {
-    // Stop the video
-    video.pause();
-    
-    // Remove the stream
+    // Stop all tracks in the video stream
     if (video.srcObject instanceof MediaStream) {
-      video.srcObject = null;
+      const tracks = video.srcObject.getTracks();
+      tracks.forEach(track => {
+        // Don't actually stop the tracks, just disconnect from video
+        try {
+          track.enabled = true; // Make sure enabled before disconnecting
+        } catch (e) {
+          logDebug(`Error resetting track: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        }
+      });
     }
     
-    // Remove event listeners
-    video.onplaying = null;
-    video.onerror = null;
+    // Clean up video element
+    video.pause();
+    video.srcObject = null;
+    
+    // Remove from DOM if it was added
+    if (video.parentNode) {
+      video.parentNode.removeChild(video);
+    }
     
     logDebug('Video resources cleaned up');
-  } catch (err) {
-    const errorMessage = `Error cleaning up video resources: ${err instanceof Error ? err.message : 'Unknown error'}`;
+  } catch (error) {
+    const errorMessage = `Error during cleanup: ${error instanceof Error ? error.message : 'Unknown error'}`;
     logError(errorMessage);
   }
 };

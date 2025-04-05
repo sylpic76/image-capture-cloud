@@ -120,7 +120,7 @@ export const useMediaStream = (
       logError(errorMessage);
       
       if (mountedRef.current) {
-        if (error.name === "NotAllowedError") {
+        if (error instanceof Error && error.name === "NotAllowedError") {
           setErrorStatus(new Error("Permission denied for screen capture"));
         } else {
           setErrorStatus(error instanceof Error ? error : new Error(String(error)));
