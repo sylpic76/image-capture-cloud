@@ -60,18 +60,6 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
-  // Use the timer hook for countdown functionality
-  const { countdown, setCountdown } = useTimer(
-    interval,
-    status,
-    async () => {
-      // Only attempt capture if we're active
-      if (status === 'active') {
-        await takeScreenshot();
-      }
-    }
-  );
-
   // Use the media stream hook to manage screen capture permissions
   const { mediaStreamRef, requestPermission, stopCapture, mountedRef } = useMediaStream(
     status,
@@ -83,20 +71,6 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     setRequestingStatus,
     interval,
     setCountdown
-  );
-
-  // Use the diagnostics hook to provide diagnostic information
-  const { getDiagnostics } = useDiagnostics(
-    status,
-    countdown,
-    mediaStreamRef,
-    lastError,
-    captureCountRef,
-    successCountRef,
-    failureCountRef,
-    configRef,
-    permissionAttemptRef,
-    permissionInProgressRef
   );
 
   // Function to take a screenshot
@@ -143,6 +117,27 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       logError("[useScreenCapture] Error during capture: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   }, [status, stopCapture, captureCount, mediaStreamRef, incrementCaptureCount, incrementSuccessCount, incrementFailureCount, setLastCaptureUrl]);
+
+  // Use the timer hook for countdown functionality - fixed to pass only one callback argument
+  const { countdown, setCountdown } = useTimer(
+    interval,
+    status,
+    takeScreenshot
+  );
+
+  // Use the diagnostics hook to provide diagnostic information
+  const { getDiagnostics } = useDiagnostics(
+    status,
+    countdown,
+    mediaStreamRef,
+    lastError,
+    captureCountRef,
+    successCountRef,
+    failureCountRef,
+    configRef,
+    permissionAttemptRef,
+    permissionInProgressRef
+  );
 
   // Toggle capture (start/stop)
   const toggleCapture = useCallback(() => {
