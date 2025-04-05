@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createLogger } from './logger';
 
 const { logDebug } = createLogger();
@@ -15,6 +15,12 @@ export const useTimer = (
   const [countdown, setCountdown] = useState<number>(intervalSeconds);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef<boolean>(true);
+  const captureCallbackRef = useRef(captureCallback);
+  
+  // Update the callback ref when the callback changes
+  useEffect(() => {
+    captureCallbackRef.current = captureCallback;
+  }, [captureCallback]);
   
   // Reset countdown when status changes to active
   useEffect(() => {
@@ -39,22 +45,6 @@ export const useTimer = (
     // Start a new timer only if status is active
     logDebug(`Starting countdown timer with ${intervalSeconds} second interval`);
     
-    // Start the counter immediately with 0 delay to ensure the countdown starts right away
-    const runCapture = async () => {
-      if (countdown <= 1 && isMountedRef.current) {
-        logDebug("Countdown reached threshold, triggering capture callback");
-        try {
-          await captureCallback();
-          // Reset the counter after capture
-          if (isMountedRef.current) {
-            setCountdown(intervalSeconds);
-          }
-        } catch (error) {
-          logDebug(`Error in capture callback: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-    };
-    
     // Set up the interval timer - ONE interval only
     timerRef.current = setInterval(() => {
       if (!isMountedRef.current) return;
@@ -67,7 +57,13 @@ export const useTimer = (
         
         // Trigger capture when countdown reaches 1
         if (prevCountdown <= 1 && isMountedRef.current) {
-          runCapture();
+          // Execute the capture callback
+          logDebug("Countdown reached threshold, triggering capture callback");
+          try {
+            captureCallbackRef.current();
+          } catch (error) {
+            logDebug(`Error in capture callback: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }
         
         return newCountdown;
@@ -81,7 +77,7 @@ export const useTimer = (
         timerRef.current = null;
       }
     };
-  }, [status, intervalSeconds, captureCallback, countdown]);
+  }, [status, intervalSeconds]);
   
   // Handle component unmount
   useEffect(() => {

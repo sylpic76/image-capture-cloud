@@ -22,14 +22,12 @@ export interface CaptureConfig {
 
 export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) => {
   const [status, setStatus] = useState<ScreenCaptureStatus>("idle");
-  const [countdown, setCountdown] = useState(countdownSeconds);
   const [error, setError] = useState<Error | null>(null);
   const [sdkDisabled, setSdkDisabled] = useState(false);
   const [imageProcessingStatus] = useState<ImageProcessingStatus>("idle");
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const captureCountRef = useRef(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const captureInProgressRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(true);
 
@@ -51,11 +49,6 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
   // Function to stop the capture
   const stopCapture = useCallback(() => {
     logDebug("[useScreenCapture] Stopping capture");
-    
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
     
     stopMediaTracks(mediaStreamRef.current);
     mediaStreamRef.current = null;
@@ -110,6 +103,13 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
   }, [status, stopCapture, captureCount]);
 
+  // Utiliser le hook useTimer pour gérer le compte à rebours et la capture
+  const { countdown, setCountdown } = useTimer(
+    interval,
+    status,
+    takeScreenshot
+  );
+
   // Function to initialize the capture
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
@@ -141,30 +141,6 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
         setStatus("active");
         setCountdown(interval);
       }
-
-      // Stop any existing timer
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-
-      // Configure a new interval
-      timerRef.current = setInterval(() => {
-        if (!mountedRef.current) return;
-        
-        setCountdown(prev => {
-          if (prev <= 1) {
-            // Don't call takeScreenshot directly in setCountdown
-            // Schedule the call just after
-            setTimeout(() => {
-              if (mountedRef.current && status === "active") {
-                takeScreenshot();
-              }
-            }, 0);
-            return interval;
-          }
-          return prev - 1;
-        });
-      }, 1000);
     } catch (err) {
       if (!mountedRef.current) return;
       
@@ -172,7 +148,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       setError(err instanceof Error ? err : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, interval, takeScreenshot]);
+  }, [status, interval, setCountdown]);
 
   // Toggle capture (start/stop)
   const toggleCapture = useCallback(() => {
