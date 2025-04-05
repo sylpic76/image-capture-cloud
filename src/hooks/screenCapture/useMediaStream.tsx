@@ -144,7 +144,7 @@ export const useMediaStream = (
     logDebug("Stopping capture from useMediaStream");
     
     if (mediaStreamRef.current) {
-      stopStreamTracks(mediaStreamRef.current);
+      stopStreamTracks();
       mediaStreamRef.current = null;
     }
   }, [stopStreamTracks]);
