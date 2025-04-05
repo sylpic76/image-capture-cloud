@@ -105,7 +105,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       }
     } catch (err) {
       captureInProgressRef.current = false;
-      logError("[useScreenCapture] Error during capture", err);
+      logError("[useScreenCapture] Error during capture", err instanceof Error ? err : new Error("Unknown error"));
     }
   }, [status, stopCapture, captureCount]);
 
@@ -171,7 +171,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       setError(err instanceof Error ? err : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, interval, takeScreenshot]);
+  }, [status, interval, takeScreenshot, stopCapture]);
 
   // Toggle la capture (start/stop)
   const toggleCapture = useCallback(() => {
