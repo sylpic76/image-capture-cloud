@@ -23,6 +23,7 @@ export const useTimer = (
   
   // Wrapped setCountdown to also update the interval reference
   const setCountdownValue = useCallback((value: number) => {
+    logDebug(`Setting countdown to ${value} seconds explicitly`);
     intervalValueRef.current = value;
     setCountdown(value);
   }, []);

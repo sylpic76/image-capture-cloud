@@ -79,10 +79,14 @@ export const useMediaStream = (
       }
       
       // Success: set up stream and start capture
-      logDebug("Screen capture permission granted");
+      logDebug("[useMediaStream] ✅ Permission granted, setting stream and activating capture");
+      
+      // Store the stream reference
+      mediaStreamRef.current = stream;
       
       // Set up handlers for when user stops sharing
       stream.getVideoTracks().forEach(track => {
+        logDebug(`Setting up track ended handler for track: ${track.id}`);
         track.onended = () => {
           logDebug("User stopped sharing screen");
           if (mountedRef.current) {
@@ -91,11 +95,9 @@ export const useMediaStream = (
         };
       });
       
-      // Store the stream reference
-      mediaStreamRef.current = stream;
-      
       // Set active status and explicitly set countdown to intervalSeconds
       if (mountedRef.current) {
+        // Activons explicitement le statut
         setActiveStatus();
         // Make sure to reset the countdown with the correct value
         logDebug(`Setting countdown to ${intervalSeconds} seconds after permission granted`);
@@ -129,14 +131,17 @@ export const useMediaStream = (
   }, [setActiveStatus, setErrorStatus, setRequestingStatus, configRef, permissionAttemptRef, permissionInProgressRef, intervalSeconds, setCountdown]);
   
   // Stop all tracks and clear stream
-  const stopStreamTracks = useCallback((stream) => {
-    if (!stream) return;
-    stopMediaTracks(stream);
+  const stopStreamTracks = useCallback(() => {
+    if (!mediaStreamRef.current) return;
+    
+    logDebug("Stopping stream tracks");
+    stopMediaTracks(mediaStreamRef.current);
+    mediaStreamRef.current = null;
   }, []);
   
   // Stop capture and clean up
   const stopCapture = useCallback(() => {
-    logDebug("Stopping capture");
+    logDebug("Stopping capture from useMediaStream");
     
     if (mediaStreamRef.current) {
       stopStreamTracks(mediaStreamRef.current);

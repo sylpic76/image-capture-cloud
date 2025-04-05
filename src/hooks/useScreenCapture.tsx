@@ -130,12 +130,13 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
 
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
-    setStatus("requesting-permission");
+    setRequestingStatus(); // Utilisation de la fonction de callback au lieu de setStatus directement
 
     try {
       const success = await requestPermission();
       if (success) {
-        setStatus("active");
+        // Utilisation de setActiveStatus au lieu de setStatus("active")
+        setActiveStatus();
         setCountdown(interval);
         logDebug("[useScreenCapture] 🎥 Stream initialisé");
       } else {
@@ -145,7 +146,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       setError(e instanceof Error ? e : new Error("Unknown error"));
       setStatus("error");
     }
-  }, [status, requestPermission, interval, setCountdown]);
+  }, [status, requestPermission, interval, setCountdown, setActiveStatus, setRequestingStatus]);
 
   const toggleCapture = useCallback(() => {
     logDebug("[useScreenCapture] Toggle requested, current status:", status);
