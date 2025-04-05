@@ -15,7 +15,7 @@ export const captureScreen = async (
   incrementFailureCount: () => void,
   setLastCaptureUrl: (url: string) => void
 ): Promise<string | null> => {
-  // Valider les prérequis pour la capture d'écran
+  // Validate prerequisites for the screenshot
   if (!validateCapturePrerequisites(mediaStream, status)) {
     logError("[captureScreen] Prerequisites failed: Invalid mediaStream or status");
     return null;
@@ -47,18 +47,18 @@ export const captureScreen = async (
       const captureId = incrementCaptureCount();
       logDebug(`[captureScreen] Starting capture #${captureId} (try ${retryCount + 1})`);
 
-      // Créer un élément vidéo et préparer le canvas pour la capture
+      // Create a video element and prepare the canvas for the capture
       const video = await prepareVideoElement(mediaStream);
       logDebug(`[captureScreen] Video element prepared: ${video.videoWidth}x${video.videoHeight}`);
       
-      // Créer le blob à partir du canvas
+      // Create the blob from the canvas
       const blob = await createCanvasFromVideo(video);
       logDebug(`[captureScreen] Canvas created and converted to blob: ${blob.size} bytes`);
       
-      // Nettoyer les ressources
+      // Clean up resources
       cleanupResources(video);
 
-      // Uploader le screenshot
+      // Upload the screenshot
       logDebug(`[captureScreen] Starting upload for capture #${captureId}, blob size=${blob.size}, type=${blob.type}`);
       const url = await uploadScreenshot(blob, captureId);
       
@@ -66,7 +66,7 @@ export const captureScreen = async (
         throw new Error("Upload returned no URL");
       }
 
-      // Mettre à jour l'URL de la dernière capture
+      // Update the URL of the last capture
       setLastCaptureUrl(url);
       incrementSuccessCount();
 
@@ -83,7 +83,7 @@ export const captureScreen = async (
         return null;
       }
       
-      // Attendre avant de réessayer
+      // Wait before retrying
       await new Promise(res => setTimeout(res, 1000 * retryCount));
     }
   }

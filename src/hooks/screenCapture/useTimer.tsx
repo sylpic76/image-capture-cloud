@@ -39,13 +39,13 @@ export const useTimer = (
     // Start a new timer only if status is active
     logDebug(`Starting countdown timer with ${intervalSeconds} second interval`);
     
-    // Démarre immédiatement le compteur avec 0 délai pour s'assurer que le countdown commence tout de suite
+    // Start the counter immediately with 0 delay to ensure the countdown starts right away
     const runCapture = async () => {
       if (countdown <= 1 && isMountedRef.current) {
         logDebug("Countdown reached threshold, triggering capture callback");
         try {
           await captureCallback();
-          // Réinitialiser le compteur après la capture
+          // Reset the counter after capture
           if (isMountedRef.current) {
             setCountdown(intervalSeconds);
           }

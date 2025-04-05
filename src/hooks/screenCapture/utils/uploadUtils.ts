@@ -4,24 +4,33 @@ import { createLogger } from '../logger';
 
 const { logDebug, logError } = createLogger();
 
-// Créer un client Supabase
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+// Create a Supabase client
+const createSupabaseClient = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (!url || !key) {
+    logError("[uploadUtils] Missing Supabase URL or API key");
+    throw new Error("Supabase configuration missing");
+  }
+  
+  return createClient(url, key);
+};
 
 /**
  * Upload a screenshot to Supabase storage
  */
 export async function uploadScreenshot(blob: Blob, captureId?: number): Promise<string | null> {
   try {
-    // Générer un nom de fichier unique basé sur la date
+    // Generate a unique filename based on date
     const timestamp = new Date().toISOString().replace(/[:.-]/g, '').substring(0, 15);
     const fileName = `screen_${timestamp}.png`;
     
-    logDebug(`[uploadScreenshot] 📤 Uploading ${fileName}, size: ${blob.size} bytes`);
+    logDebug(`[uploadUtils] 📤 Uploading ${fileName}, size: ${blob.size} bytes`);
 
-    // Télécharger le fichier vers le bucket "screenshots"
+    const supabase = createSupabaseClient();
+
+    // Upload the file to the "screenshots" bucket
     const { data, error } = await supabase.storage
       .from("screenshots")
       .upload(fileName, blob, {
@@ -30,26 +39,26 @@ export async function uploadScreenshot(blob: Blob, captureId?: number): Promise<
       });
 
     if (error) {
-      logError("[uploadScreenshot] ❌ Upload failed", error);
+      logError("[uploadUtils] ❌ Upload failed", error);
       return null;
     }
 
-    logDebug(`[uploadScreenshot] File uploaded successfully: ${fileName}`);
+    logDebug(`[uploadUtils] File uploaded successfully: ${fileName}`);
 
-    // Créer une URL signée pour l'accès au fichier
+    // Create a signed URL for file access
     const { data: signed, error: signedError } = await supabase.storage
       .from("screenshots")
-      .createSignedUrl(fileName, 3600); // valide 1h
+      .createSignedUrl(fileName, 3600); // valid for 1 hour
 
     if (signedError || !signed?.signedUrl) {
-      logError("[uploadScreenshot] ❌ Could not get signed URL", signedError);
+      logError("[uploadUtils] ❌ Could not get signed URL", signedError);
       return null;
     }
 
-    logDebug(`[uploadScreenshot] ✅ Signed URL created: ${signed.signedUrl.substring(0, 50)}...`);
+    logDebug(`[uploadUtils] ✅ Signed URL created: ${signed.signedUrl.substring(0, 50)}...`);
     return signed.signedUrl;
   } catch (err) {
-    logError("[uploadScreenshot] Unexpected error during upload", err);
+    logError("[uploadUtils] Unexpected error during upload", err);
     return null;
   }
 }

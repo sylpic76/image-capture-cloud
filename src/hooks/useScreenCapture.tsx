@@ -7,6 +7,7 @@ import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types"
 import { createLogger } from "./screenCapture/logger";
 import { requestMediaPermission, stopMediaTracks } from "./screenCapture/mediaStream";
 import { lockConfiguration } from "./screenCapture/config";
+import { useTimer } from "./screenCapture/useTimer";
 
 const { logDebug, logError } = createLogger();
 
@@ -47,7 +48,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
-  // Fonction pour arrêter la capture
+  // Function to stop the capture
   const stopCapture = useCallback(() => {
     logDebug("[useScreenCapture] Stopping capture");
     
@@ -64,15 +65,15 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
   }, []);
 
-  // Fonction pour prendre une capture d'écran
+  // Function to take a screenshot
   const takeScreenshot = useCallback(async () => {
-    // Vérifier si une capture est déjà en cours pour éviter les appels simultanés
+    // Check if a capture is already in progress to avoid simultaneous calls
     if (captureInProgressRef.current) {
       logDebug("[useScreenCapture] Capture already in progress, skipping");
       return;
     }
 
-    // Vérifier si le statut est actif et si le stream est disponible
+    // Check if the status is active and if the stream is available
     if (status !== "active" || !mediaStreamRef.current) {
       logDebug("[useScreenCapture] Cannot take screenshot - system not running or no stream");
       return;
@@ -109,7 +110,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
   }, [status, stopCapture, captureCount]);
 
-  // Fonction pour initialiser la capture
+  // Function to initialize the capture
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
 
@@ -121,7 +122,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       const stream = await requestMediaPermission(configRef);
       
       if (!mountedRef.current) {
-        // Le composant a été démonté pendant la demande de permission
+        // The component has been unmounted during the permission request
         stopMediaTracks(stream);
         return;
       }
@@ -141,19 +142,19 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
         setCountdown(interval);
       }
 
-      // Arrêter tout timer existant
+      // Stop any existing timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
 
-      // Configurer un nouvel intervalle
+      // Configure a new interval
       timerRef.current = setInterval(() => {
         if (!mountedRef.current) return;
         
         setCountdown(prev => {
           if (prev <= 1) {
-            // Ne pas appeler takeScreenshot directement dans le setCountdown
-            // Planifier l'appel juste après
+            // Don't call takeScreenshot directly in setCountdown
+            // Schedule the call just after
             setTimeout(() => {
               if (mountedRef.current && status === "active") {
                 takeScreenshot();
@@ -173,7 +174,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
   }, [status, interval, takeScreenshot, stopCapture]);
 
-  // Toggle la capture (start/stop)
+  // Toggle capture (start/stop)
   const toggleCapture = useCallback(() => {
     logDebug("[useScreenCapture] Toggle requested, current status:", status);
     if (status === "active") {
@@ -184,23 +185,23 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
   }, [status, initCapture, stopCapture]);
 
-  // Effet pour démarrer automatiquement la capture si configuré
+  // Effect to automatically start the capture if configured
   useEffect(() => {
-    // Marquer le composant comme monté
+    // Mark component as mounted
     mountedRef.current = true;
     
     if (autoStart && status === "idle" && !suppressPermissionPrompt) {
       initCapture();
     }
 
-    // Nettoyage lors du démontage du composant
+    // Cleanup when the component is unmounted
     return () => {
       mountedRef.current = false;
       stopCapture();
     };
   }, [autoStart, status, suppressPermissionPrompt, initCapture, stopCapture]);
 
-  // Obtenir les informations de diagnostic
+  // Get diagnostic information
   const getDiagnostics = useCallback(() => ({
     status,
     countdown,
