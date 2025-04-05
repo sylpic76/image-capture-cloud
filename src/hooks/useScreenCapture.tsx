@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { captureScreen } from "./screenCapture/captureScreen";
@@ -5,8 +6,8 @@ import { ImageProcessingStatus } from "@/types/assistant";
 import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types";
 import { createLogger } from "./screenCapture/logger";
 import { lockConfiguration } from "./screenCapture/config";
-import { useMediaStream } from "./useMediaStream";
-import { useTimer } from "./useTimer";
+import { useMediaStream } from "./screenCapture/useMediaStream";
+import { useTimer } from "./screenCapture/useTimer";
 
 const { logDebug, logError } = createLogger();
 
@@ -84,7 +85,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     if (status === "active") {
       takeScreenshot();
     }
-  }, interval);
+  });
 
   // Initialiser stream / permission
   const {

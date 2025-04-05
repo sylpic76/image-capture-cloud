@@ -8,8 +8,7 @@ const { logDebug } = createLogger();
  * Hook to manage capture timer logic
  */
 export const useTimer = (
-  status: string,
-  captureCallback: () => Promise<any>
+  captureCallback: () => void
 ) => {
   const [countdown, setCountdown] = useState<number>(10); // Default to 10 seconds
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -21,24 +20,12 @@ export const useTimer = (
     captureCallbackRef.current = captureCallback;
   }, [captureCallback]);
   
-  // Reset countdown when status changes to active
-  useEffect(() => {
-    if (status === 'active') {
-      logDebug(`Resetting countdown because status changed to active`);
-      // We don't reset the countdown here as it's now handled by setCountdown from outside
-    }
-  }, [status]);
-  
   // Set up the countdown timer
   useEffect(() => {
     // Clear existing timer on any status change
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-    }
-    
-    if (status !== 'active') {
-      return;
     }
     
     logDebug(`Starting countdown timer`);
@@ -76,7 +63,7 @@ export const useTimer = (
         timerRef.current = null;
       }
     };
-  }, [status, countdown]);
+  }, [countdown]);
   
   // Handle component unmount
   useEffect(() => {
