@@ -35,7 +35,7 @@ export const useTimer = (
       if (!isMountedRef.current) return;
       
       setCountdown(prevCountdown => {
-        // Get the new countdown value, cycling back to the initial value when it reaches 1
+        // Get the new countdown value
         const newCountdown = prevCountdown <= 1 ? countdown : prevCountdown - 1;
         
         // Log the countdown change
