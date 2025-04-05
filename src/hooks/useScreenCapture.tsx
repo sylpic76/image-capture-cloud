@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { captureScreen } from "./screenCapture/captureScreen";
@@ -6,8 +5,8 @@ import { ImageProcessingStatus } from "@/types/assistant";
 import { ScreenCaptureStatus, ScreenCaptureConfig } from "./screenCapture/types";
 import { createLogger } from "./screenCapture/logger";
 import { lockConfiguration } from "./screenCapture/config";
-import { useMediaStream } from "./screenCapture/useMediaStream";
-import { useTimer } from "./screenCapture/useTimer";
+import { useMediaStream } from "@/hooks/useMediaStream";
+import { useTimer } from "@/hooks/useTimer";
 
 const { logDebug, logError } = createLogger();
 
@@ -45,24 +44,22 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
-  // Status setter functions
   const setActiveStatus = useCallback(() => {
     setStatus("active");
     logDebug("Status set to: active");
   }, []);
-  
+
   const setErrorStatus = useCallback((err: Error) => {
     setError(err);
     setStatus("error");
     logError("Status set to: error", err);
   }, []);
-  
+
   const setRequestingStatus = useCallback(() => {
     setStatus("requesting-permission");
     logDebug("Status set to: requesting-permission");
   }, []);
 
-  // Callback pour déclencher une capture
   const takeScreenshot = useCallback(async () => {
     logDebug("[useScreenCapture] 🔔 Trigger capture");
     if (status !== "active" || !mediaStreamRef.current) {
@@ -85,7 +82,6 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       }
 
       if (imageUrl && autoUpload && !offline) {
-        // Le `uploadScreenshot` est déjà appelé depuis captureScreen
         logDebug("[useScreenCapture] ✅ Screenshot captured and uploaded");
       }
 
@@ -99,7 +95,6 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   }, [status, autoUpload, offline, captureCount]);
 
-  // Fonction de capture conditionnelle pour le timer
   const conditionalCapture = useCallback(() => {
     if (status === "active") {
       takeScreenshot();
@@ -108,10 +103,8 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   }, [status, takeScreenshot]);
 
-  // Timer toutes les X secondes
   const { countdown, setCountdown } = useTimer(conditionalCapture);
 
-  // Initialiser stream / permission
   const {
     mediaStreamRef,
     requestPermission,
