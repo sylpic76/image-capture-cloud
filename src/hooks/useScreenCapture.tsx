@@ -137,7 +137,6 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       const success = await requestPermission();
       if (success) {
         setStatus("active");
-        // Ici on utilise seulement setCountdown avec un paramètre
         setCountdown(interval);
         logDebug("[useScreenCapture] 🎥 Stream initialisé");
       } else {

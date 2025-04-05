@@ -14,11 +14,18 @@ export const useTimer = (
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef<boolean>(true);
   const captureCallbackRef = useRef(captureCallback);
+  const intervalValueRef = useRef<number>(countdown);
   
   // Update the callback ref when the callback changes
   useEffect(() => {
     captureCallbackRef.current = captureCallback;
   }, [captureCallback]);
+  
+  // Wrapped setCountdown to also update the interval reference
+  const setCountdownValue = useCallback((value: number) => {
+    intervalValueRef.current = value;
+    setCountdown(value);
+  }, []);
   
   // Set up the countdown timer
   useEffect(() => {
@@ -36,7 +43,7 @@ export const useTimer = (
       
       setCountdown(prevCountdown => {
         // Get the new countdown value
-        const newCountdown = prevCountdown <= 1 ? countdown : prevCountdown - 1;
+        const newCountdown = prevCountdown <= 1 ? intervalValueRef.current : prevCountdown - 1;
         
         // Log the countdown change
         logDebug(`Countdown: ${prevCountdown} -> ${newCountdown}`);
@@ -63,7 +70,7 @@ export const useTimer = (
         timerRef.current = null;
       }
     };
-  }, [countdown]);
+  }, []);
   
   // Handle component unmount
   useEffect(() => {
@@ -76,5 +83,5 @@ export const useTimer = (
     };
   }, []);
   
-  return { countdown, setCountdown };
+  return { countdown, setCountdown: setCountdownValue };
 };
