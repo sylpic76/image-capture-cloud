@@ -17,26 +17,26 @@ export const captureScreen = async (
 ): Promise<string | null> => {
   // Validate prerequisites for the screenshot
   if (!validateCapturePrerequisites(mediaStream, status)) {
-    logError(`[captureScreen] Prerequisites failed: Invalid mediaStream or status`);
+    logError("Prerequisites failed: Invalid mediaStream or status");
     return null;
   }
 
   if (!mediaStream?.active) {
-    logError(`[captureScreen] Stream is null or inactive`);
+    logError("Stream is null or inactive");
     return null;
   }
 
   const videoTracks = mediaStream.getVideoTracks();
   if (videoTracks.length === 0) {
-    logError(`[captureScreen] No video tracks found in stream`);
+    logError("No video tracks found in stream");
     return null;
   }
 
-  logDebug(`[captureScreen] Stream active: ${mediaStream.active}, Video tracks: ${videoTracks.length}`);
+  logDebug(`Stream active: ${mediaStream.active}, Video tracks: ${videoTracks.length}`);
   
   // Log details about each track
   videoTracks.forEach((track, i) => {
-    logDebug(`[captureScreen] Track ${i}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+    logDebug(`Track ${i}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
   });
 
   let retryCount = 0;
@@ -45,21 +45,21 @@ export const captureScreen = async (
   while (retryCount <= maxRetries) {
     try {
       const captureId = incrementCaptureCount();
-      logDebug(`[captureScreen] Starting capture #${captureId} (try ${retryCount + 1})`);
+      logDebug(`Starting capture #${captureId} (try ${retryCount + 1})`);
 
       // Create a video element and prepare the canvas for the capture
       const video = await prepareVideoElement(mediaStream);
-      logDebug(`[captureScreen] Video element prepared: ${video.videoWidth}x${video.videoHeight}`);
+      logDebug(`Video element prepared: ${video.videoWidth}x${video.videoHeight}`);
       
       // Create the blob from the canvas
       const blob = await createCanvasFromVideo(video);
-      logDebug(`[captureScreen] Canvas created and converted to blob: ${blob.size} bytes`);
+      logDebug(`Canvas created and converted to blob: ${blob.size} bytes`);
       
       // Clean up resources
       cleanupResources(video);
 
       // Upload the screenshot
-      logDebug(`[captureScreen] Starting upload for capture #${captureId}, blob size=${blob.size}, type=${blob.type}`);
+      logDebug(`Starting upload for capture #${captureId}, blob size=${blob.size}, type=${blob.type}`);
       const url = await uploadScreenshot(blob, captureId);
       
       if (!url) {
@@ -70,13 +70,13 @@ export const captureScreen = async (
       setLastCaptureUrl(url);
       incrementSuccessCount();
 
-      logDebug(`[captureScreen] ✅ Capture #${captureId} completed and uploaded: ${url}`);
+      logDebug(`✅ Capture #${captureId} completed and uploaded: ${url}`);
       toast.success("Capture d'écran prise avec succès");
       return url;
       
     } catch (error) {
       retryCount++;
-      const errorMessage = `[captureScreen] Capture failed (attempt ${retryCount}/${maxRetries + 1}): ${error instanceof Error ? error.message : 'Unknown error'}`;
+      const errorMessage = `Capture failed (attempt ${retryCount}/${maxRetries + 1}): ${error instanceof Error ? error.message : 'Unknown error'}`;
       logError(errorMessage);
       
       if (retryCount > maxRetries) {

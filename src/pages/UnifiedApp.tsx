@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useAssistantMessages } from '@/hooks/useAssistantMessages';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -18,25 +18,12 @@ const UnifiedApp = () => {
     status,
     countdown,
     toggleCapture,
-    initCapture, // Utilisons cette fonction pour démarrer la capture initialement
     getDiagnostics,
     sdkDisabled
   } = useScreenCapture(captureInterval, {
     interval: captureInterval,
-    autoStart: true // Modifié à true pour démarrer automatiquement
+    autoStart: false // Explicitement à false pour ne démarrer que via le bouton
   });
-
-  // Démarrer automatiquement la capture au chargement de la page
-  useEffect(() => {
-    // Petit délai pour permettre au composant de se monter complètement
-    const timer = setTimeout(() => {
-      if (status === 'idle') {
-        initCapture();
-      }
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [status, initCapture]);
 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [useScreenshots, setUseScreenshots] = useState(true);
