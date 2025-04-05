@@ -60,20 +60,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
-  // Use the media stream hook to manage screen capture permissions
-  const { mediaStreamRef, requestPermission, stopCapture, mountedRef } = useMediaStream(
-    status,
-    configRef,
-    permissionAttemptRef,
-    permissionInProgressRef,
-    setActiveStatus,
-    setErrorStatus,
-    setRequestingStatus,
-    interval,
-    setCountdown
-  );
-
-  // Function to take a screenshot
+  // Function to take a screenshot - define this first as it's used by useTimer
   const takeScreenshot = useCallback(async () => {
     // Check if a capture is already in progress to avoid simultaneous calls
     if (isCapturingRef.current) {
@@ -116,13 +103,26 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       isCapturingRef.current = false;
       logError("[useScreenCapture] Error during capture: " + (err instanceof Error ? err.message : "Unknown error"));
     }
-  }, [status, stopCapture, captureCount, mediaStreamRef, incrementCaptureCount, incrementSuccessCount, incrementFailureCount, setLastCaptureUrl]);
+  }, [status, captureCount, incrementCaptureCount, incrementSuccessCount, incrementFailureCount, setLastCaptureUrl]);
 
-  // Use the timer hook for countdown functionality - fixed to pass only one callback argument
+  // Define useTimer first so we have setCountdown available for useMediaStream
   const { countdown, setCountdown } = useTimer(
     interval,
     status,
     takeScreenshot
+  );
+
+  // Now use the media stream hook with setCountdown available
+  const { mediaStreamRef, requestPermission, stopCapture, mountedRef } = useMediaStream(
+    status,
+    configRef,
+    permissionAttemptRef,
+    permissionInProgressRef,
+    setActiveStatus,
+    setErrorStatus,
+    setRequestingStatus,
+    interval,
+    setCountdown
   );
 
   // Use the diagnostics hook to provide diagnostic information
