@@ -130,12 +130,12 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
 
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
-    setRequestingStatus(); // Utilisation de la fonction de callback au lieu de setStatus directement
+    setRequestingStatus(); // Use the callback function instead of directly setting status
 
     try {
       const success = await requestPermission();
       if (success) {
-        // Utilisation de setActiveStatus au lieu de setStatus("active")
+        // Use setActiveStatus instead of directly setting status to "active"
         setActiveStatus();
         setCountdown(interval);
         logDebug("[useScreenCapture] 🎥 Stream initialisé");
