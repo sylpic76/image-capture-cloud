@@ -143,7 +143,9 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
         setStatus("error");
       }
     } catch (e) {
-      setError(e instanceof Error ? e : new Error("Unknown error"));
+      const errorObj = e instanceof Error ? e : new Error("Unknown error");
+      logError(`Error during capture initialization: ${errorObj.message}`);
+      setError(errorObj);
       setStatus("error");
     }
   }, [status, requestPermission, interval, setCountdown, setActiveStatus, setRequestingStatus]);
