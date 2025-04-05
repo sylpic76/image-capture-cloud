@@ -1,11 +1,17 @@
 
 // Logger spécialisé pour le hook useScreenCapture
 export const createLogger = () => {
-  const logDebug = (message: string) => {
-    console.log(`[useScreenCapture] ${message}`);
+  // Fonction de débogage - affiche un message dans la console
+  const logDebug = (message: string, ...args: any[]) => {
+    if (args && args.length > 0) {
+      console.log(`[useScreenCapture] ${message}`, ...args);
+    } else {
+      console.log(`[useScreenCapture] ${message}`);
+    }
   };
 
-  // Accepte un seul argument (message d'erreur combiné)
+  // Fonction d'erreur - affiche un message d'erreur dans la console
+  // Accepte un seul argument (message d'erreur)
   const logError = (message: string): Error => {
     console.error(`[useScreenCapture ERROR] ${message}`);
     return new Error(message);

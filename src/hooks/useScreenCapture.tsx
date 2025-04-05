@@ -31,7 +31,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
   const permissionInProgressRef = useRef(false);
 
   const {
-    autoStart = true,
+    autoStart = false, // Changé à false par défaut pour éviter le démarrage automatique sans permission
     interval = 10,
     captureCount = Infinity,
     autoUpload = true,
@@ -145,7 +145,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     } catch (e) {
       const errorObj = e instanceof Error ? e : new Error("Unknown error");
       const errorMessage = `Error during capture initialization: ${errorObj.message}`;
-      logError(errorMessage);
+      logError(errorMessage); // Corrigé ici pour n'utiliser qu'un seul argument
       setError(errorObj);
       setStatus("error");
     }
@@ -161,12 +161,18 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   }, [status, initCapture, stopCapture]);
 
+  // Force un premier appel à initCapture lors du montage du composant si autoStart est true
   useEffect(() => {
+    // Activer initialement la capture si autoStart est true
     if (autoStart && status === "idle" && !suppressPermissionPrompt) {
+      logDebug("[useScreenCapture] Auto-starting capture");
       initCapture();
     }
 
-    return () => stopCapture();
+    return () => {
+      logDebug("[useScreenCapture] Component unmounting, stopping capture");
+      stopCapture();
+    };
   }, [autoStart, status, suppressPermissionPrompt, initCapture, stopCapture]);
 
   const getDiagnostics = useCallback(() => ({

@@ -17,18 +17,18 @@ export const captureScreen = async (
 ): Promise<string | null> => {
   // Validate prerequisites for the screenshot
   if (!validateCapturePrerequisites(mediaStream, status)) {
-    logError("[captureScreen] Prerequisites failed: Invalid mediaStream or status");
+    logError(`[captureScreen] Prerequisites failed: Invalid mediaStream or status`);
     return null;
   }
 
   if (!mediaStream?.active) {
-    logError("[captureScreen] Stream is null or inactive");
+    logError(`[captureScreen] Stream is null or inactive`);
     return null;
   }
 
   const videoTracks = mediaStream.getVideoTracks();
   if (videoTracks.length === 0) {
-    logError("[captureScreen] No video tracks found in stream");
+    logError(`[captureScreen] No video tracks found in stream`);
     return null;
   }
 

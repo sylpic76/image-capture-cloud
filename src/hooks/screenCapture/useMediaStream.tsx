@@ -21,7 +21,7 @@ export const useMediaStream = (
   setCountdown: (seconds: number) => void
 ) => {
   // References to maintain stream and mount status
-  const mediaStreamRef = useRef(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const mountedRef = useRef(true);
   
   // Clean up on unmount
