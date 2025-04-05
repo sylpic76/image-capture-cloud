@@ -130,12 +130,11 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
 
   const initCapture = useCallback(async () => {
     if (status !== "idle") return;
-    setRequestingStatus(); // Use the callback function instead of directly setting status
+    setRequestingStatus();
 
     try {
       const success = await requestPermission();
       if (success) {
-        // Use setActiveStatus instead of directly setting status to "active"
         setActiveStatus();
         setCountdown(interval);
         logDebug("[useScreenCapture] 🎥 Stream initialisé");
@@ -144,8 +143,9 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       }
     } catch (e) {
       const errorObj = e instanceof Error ? e : new Error("Unknown error");
-      // Call logError with the correct signature - message as first param, error object as second param
-      logError("Error during capture initialization", errorObj);
+      // Combine the error messages into a single string for logError
+      const errorMessage = `Error during capture initialization: ${errorObj.message}`;
+      logError(errorMessage);
       setError(errorObj);
       setStatus("error");
     }

@@ -5,10 +5,10 @@ export const createLogger = () => {
     console.log(`[useScreenCapture] ${message}`);
   };
 
-  // Explicitly define the return type and make error optional
-  const logError = (message: string, error?: any): Error => {
-    console.error(`[useScreenCapture ERROR] ${message}`, error ? `:${error}` : "");
-    return error instanceof Error ? error : new Error(String(error || message));
+  // Combine message and error into a single string parameter
+  const logError = (message: string): Error => {
+    console.error(`[useScreenCapture ERROR] ${message}`);
+    return new Error(message);
   };
   
   return {
