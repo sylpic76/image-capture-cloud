@@ -121,7 +121,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     setActiveStatus,
     setErrorStatus,
     setRequestingStatus,
-    interval,
+    intervalSeconds, // Use the passed intervalSeconds parameter
     setCountdown
   );
 
