@@ -36,10 +36,12 @@ export const useCaptureState = (config: ScreenCaptureConfig) => {
   
   const incrementSuccessCount = useCallback(() => {
     successCountRef.current += 1;
+    return successCountRef.current;
   }, []);
   
   const incrementFailureCount = useCallback(() => {
     failureCountRef.current += 1;
+    return failureCountRef.current;
   }, []);
   
   // Status setter functions
