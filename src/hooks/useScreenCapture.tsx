@@ -105,9 +105,8 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     }
   }, [status, captureCount, incrementCaptureCount, incrementSuccessCount, incrementFailureCount, setLastCaptureUrl]);
 
-  // Define useTimer first so we have setCountdown available for useMediaStream
+  // Define useTimer with the proper callback format
   const { countdown, setCountdown } = useTimer(
-    interval,
     status,
     takeScreenshot
   );
