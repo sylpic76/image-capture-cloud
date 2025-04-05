@@ -5,7 +5,7 @@ export const createLogger = () => {
     console.log(`[useScreenCapture] ${message}`);
   };
 
-  // Combine message and error into a single string parameter
+  // Accepte un seul argument (message d'erreur combiné)
   const logError = (message: string): Error => {
     console.error(`[useScreenCapture ERROR] ${message}`);
     return new Error(message);

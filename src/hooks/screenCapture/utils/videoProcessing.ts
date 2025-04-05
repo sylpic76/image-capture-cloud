@@ -4,117 +4,128 @@ import { createLogger } from '../logger';
 const { logDebug, logError } = createLogger();
 
 /**
- * Create a video element and prepare it with the media stream
+ * Create and prepare a video element from a media stream
  */
 export const prepareVideoElement = async (mediaStream: MediaStream): Promise<HTMLVideoElement> => {
-  const video = document.createElement('video');
-  video.srcObject = mediaStream;
-  video.autoplay = true;
-  video.muted = true;
-  video.style.position = 'fixed';
-  video.style.opacity = '0';
-  video.style.pointerEvents = 'none';
-  document.body.appendChild(video);
-
-  // Wait for the video to be ready
-  await new Promise<void>((resolve, reject) => {
-    // Set a timeout to prevent infinite waiting
-    const timeout = setTimeout(() => {
-      logError("[videoProcessing] Timeout waiting for video to load");
-      reject(new Error("Video load timeout"));
-    }, 5000);
-
-    // Add handlers for successful load and error
-    video.onloadedmetadata = () => {
-      clearTimeout(timeout);
-      video.play()
-        .then(() => {
-          // Add a small delay to ensure the frame is ready
-          setTimeout(resolve, 100);
-        })
-        .catch(err => {
-          clearTimeout(timeout);
-          logError(`[videoProcessing] Error playing video: ${err instanceof Error ? err.message : String(err)}`);
-          reject(err);
-        });
-    };
-
-    video.onerror = (err) => {
-      clearTimeout(timeout);
-      logError(`[videoProcessing] Error loading video: ${err instanceof Event ? 'Event error' : String(err)}`);
-      reject(err);
-    };
+  return new Promise((resolve, reject) => {
+    try {
+      const video = document.createElement('video');
+      
+      // Configure video element
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.srcObject = mediaStream;
+      
+      // When the video starts playing, we can capture it
+      video.onplaying = () => {
+        logDebug(`Video element ready: ${video.videoWidth}x${video.videoHeight}`);
+        resolve(video);
+      };
+      
+      // Handle errors
+      video.onerror = (event) => {
+        const errorMessage = `Error initializing video element: ${event.type}`;
+        logError(errorMessage);
+        reject(new Error(errorMessage));
+      };
+      
+      // Start playing the video
+      video.play().catch(err => {
+        const errorMessage = `Failed to play video: ${err.message}`;
+        logError(errorMessage);
+        reject(new Error(errorMessage));
+      });
+      
+      // Set a timeout in case onplaying never fires
+      setTimeout(() => {
+        if (video.readyState < 3) { // HAVE_FUTURE_DATA
+          const errorMessage = 'Video element timed out while initializing';
+          logError(errorMessage);
+          reject(new Error(errorMessage));
+        }
+      }, 5000);
+    } catch (err) {
+      const errorMessage = `Failed to create video element: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      logError(errorMessage);
+      reject(new Error(errorMessage));
+    }
   });
-
-  return video;
 };
 
 /**
- * Create a canvas from a video element and convert it to a blob
+ * Create a canvas from the video and return as a blob
  */
 export const createCanvasFromVideo = async (video: HTMLVideoElement): Promise<Blob> => {
-  // Create canvas with the video dimensions
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  
-  logDebug(`[videoProcessing] Creating canvas ${canvas.width}x${canvas.height}`);
-
-  // Draw the video frame on the canvas
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error("Unable to get canvas context");
-  }
-  
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  
-  // Convert canvas to blob
-  return new Promise<Blob>((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
+      // Ensure video dimensions are valid
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        const errorMessage = 'Invalid video dimensions: Width or height is zero';
+        logError(errorMessage);
+        reject(new Error(errorMessage));
+        return;
+      }
+      
+      // Create canvas with video dimensions
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw video frame to canvas
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        const errorMessage = 'Failed to get canvas context';
+        logError(errorMessage);
+        reject(new Error(errorMessage));
+        return;
+      }
+      
+      // Draw the video frame to the canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to blob
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            reject(new Error("Canvas.toBlob produced null result"));
+            const errorMessage = 'Failed to convert canvas to blob';
+            logError(errorMessage);
+            reject(new Error(errorMessage));
             return;
           }
           resolve(blob);
         },
         'image/png',
-        0.9 // quality
+        0.95 // Quality (0-1)
       );
     } catch (err) {
-      logError(`[videoProcessing] Error converting canvas to blob: ${err instanceof Error ? err.message : String(err)}`);
-      reject(err);
+      const errorMessage = `Error creating canvas from video: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      logError(errorMessage);
+      reject(new Error(errorMessage));
     }
   });
 };
 
 /**
- * Clean up resources after capture
+ * Clean up resources used by the video element
  */
-export const cleanupResources = (video: HTMLVideoElement): void => {
+export const cleanupResources = (video: HTMLVideoElement) => {
   try {
-    // Remove video element from DOM
-    if (video.parentNode) {
-      video.parentNode.removeChild(video);
-    }
+    // Stop the video
+    video.pause();
     
-    // Stop all tracks in the srcObject if it's a MediaStream
+    // Remove the stream
     if (video.srcObject instanceof MediaStream) {
-      const stream = video.srcObject;
-      stream.getTracks().forEach(track => {
-        if (track.readyState === 'live') {
-          // Don't stop the track, just release it from this element
-          // because we're still using it in the main mediaStreamRef
-        }
-      });
+      video.srcObject = null;
     }
     
-    // Clear srcObject to release resources
-    video.srcObject = null;
+    // Remove event listeners
+    video.onplaying = null;
+    video.onerror = null;
     
-    logDebug("[videoProcessing] Resources cleaned up successfully");
+    logDebug('Video resources cleaned up');
   } catch (err) {
-    logError(`[videoProcessing] Error cleaning up resources: ${err instanceof Error ? err.message : String(err)}`);
+    const errorMessage = `Error cleaning up video resources: ${err instanceof Error ? err.message : 'Unknown error'}`;
+    logError(errorMessage);
   }
 };

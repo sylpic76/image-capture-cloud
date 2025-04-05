@@ -35,7 +35,6 @@ export const handleHttpError = (url: string, status: number, statusText: string,
 export const handleFetchError = (url: string, error: Error) => {
   const errorMessage = error.message;
   const errorName = error.name;
-  const errorStack = error.stack;
   
   logError(`Erreur réseau pour ${url} - ${errorMessage}, name: ${errorName}`);
   

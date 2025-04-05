@@ -116,7 +116,8 @@ export const useMediaStream = (
       }
       
       // Handle permission denied or other errors
-      logError(`Screen capture permission error: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = `Screen capture permission error: ${error instanceof Error ? error.message : String(error)}`;
+      logError(errorMessage);
       
       if (mountedRef.current) {
         if (error.name === "NotAllowedError") {

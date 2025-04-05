@@ -91,7 +91,8 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
         toast.info("Nombre maximum de captures atteint");
       }
     } catch (e) {
-      logError(`[useScreenCapture] Capture failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+      const errorMessage = `[useScreenCapture] Capture failed: ${e instanceof Error ? e.message : "Unknown error"}`;
+      logError(errorMessage);
       toast.error("Erreur pendant la capture");
     }
   }, [status, autoUpload, offline, captureCount]);
@@ -143,7 +144,6 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       }
     } catch (e) {
       const errorObj = e instanceof Error ? e : new Error("Unknown error");
-      // Combine the error messages into a single string for logError
       const errorMessage = `Error during capture initialization: ${errorObj.message}`;
       logError(errorMessage);
       setError(errorObj);

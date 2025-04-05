@@ -76,7 +76,8 @@ export const captureScreen = async (
       
     } catch (error) {
       retryCount++;
-      logError(`[captureScreen] Capture failed (attempt ${retryCount}/${maxRetries + 1}): ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = `[captureScreen] Capture failed (attempt ${retryCount}/${maxRetries + 1}): ${error instanceof Error ? error.message : 'Unknown error'}`;
+      logError(errorMessage);
       
       if (retryCount > maxRetries) {
         incrementFailureCount();
