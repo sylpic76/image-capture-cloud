@@ -27,6 +27,8 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
   const [imageProcessingStatus] = useState<ImageProcessingStatus>("idle");
 
   const captureCountRef = useRef(0);
+  const permissionAttemptRef = useRef(false);
+  const permissionInProgressRef = useRef(false);
 
   const {
     autoStart = true,
@@ -87,12 +89,30 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   });
 
+  // Create simple status setters
+  const setActiveStatus = useCallback(() => setStatus("active"), []);
+  const setErrorStatus = useCallback((err: Error) => {
+    setError(err);
+    setStatus("error");
+  }, []);
+  const setRequestingStatus = useCallback(() => setStatus("requesting-permission"), []);
+
   // Initialiser stream / permission
   const {
     mediaStreamRef,
     requestPermission,
     stopCapture: stopStreamTracks
-  } = useMediaStream(status, configRef, setCountdown);
+  } = useMediaStream(
+    status,
+    configRef,
+    permissionAttemptRef,
+    permissionInProgressRef,
+    setActiveStatus,
+    setErrorStatus,
+    setRequestingStatus,
+    interval,
+    setCountdown
+  );
 
   const stopCapture = useCallback(() => {
     logDebug("[useScreenCapture] Stopping capture");

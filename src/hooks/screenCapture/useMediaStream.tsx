@@ -1,7 +1,8 @@
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, MutableRefObject } from 'react';
 import { createLogger } from './logger';
 import { requestMediaPermission, stopMediaTracks } from './mediaStream';
+import { ScreenCaptureConfig, ScreenCaptureStatus } from './types';
 
 const { logDebug, logError } = createLogger();
 
@@ -9,15 +10,15 @@ const { logDebug, logError } = createLogger();
  * Hook to manage the media stream for screen capture
  */
 export const useMediaStream = (
-  status,
-  configRef,
-  permissionAttemptRef,
-  permissionInProgressRef,
-  setActiveStatus,
-  setErrorStatus,
-  setRequestingStatus,
-  intervalSeconds,
-  setCountdown
+  status: ScreenCaptureStatus,
+  configRef: MutableRefObject<ScreenCaptureConfig>,
+  permissionAttemptRef: MutableRefObject<boolean>,
+  permissionInProgressRef: MutableRefObject<boolean>,
+  setActiveStatus: () => void,
+  setErrorStatus: (error: Error) => void,
+  setRequestingStatus: () => void,
+  intervalSeconds: number,
+  setCountdown: (seconds: number) => void
 ) => {
   // References to maintain stream and mount status
   const mediaStreamRef = useRef(null);
