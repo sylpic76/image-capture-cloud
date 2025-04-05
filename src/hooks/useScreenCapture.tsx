@@ -45,6 +45,23 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
+  // Status setter functions
+  const setActiveStatus = useCallback(() => {
+    setStatus("active");
+    logDebug("Status set to: active");
+  }, []);
+  
+  const setErrorStatus = useCallback((err: Error) => {
+    setError(err);
+    setStatus("error");
+    logError("Status set to: error", err);
+  }, []);
+  
+  const setRequestingStatus = useCallback(() => {
+    setStatus("requesting-permission");
+    logDebug("Status set to: requesting-permission");
+  }, []);
+
   // Callback pour déclencher une capture
   const takeScreenshot = useCallback(async () => {
     logDebug("[useScreenCapture] 🔔 Trigger capture");
@@ -89,14 +106,6 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   });
 
-  // Create simple status setters
-  const setActiveStatus = useCallback(() => setStatus("active"), []);
-  const setErrorStatus = useCallback((err: Error) => {
-    setError(err);
-    setStatus("error");
-  }, []);
-  const setRequestingStatus = useCallback(() => setStatus("requesting-permission"), []);
-
   // Initialiser stream / permission
   const {
     mediaStreamRef,
@@ -128,6 +137,7 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       const success = await requestPermission();
       if (success) {
         setStatus("active");
+        // Ici on utilise seulement setCountdown avec un paramètre
         setCountdown(interval);
         logDebug("[useScreenCapture] 🎥 Stream initialisé");
       } else {
