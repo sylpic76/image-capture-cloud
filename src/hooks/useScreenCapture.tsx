@@ -30,6 +30,9 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
   const captureCountRef = useRef(0);
   const captureInProgressRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(true);
+  const successCountRef = useRef(0);
+  const failureCountRef = useRef(0);
+  const lastCaptureUrlRef = useRef<string | null>(null);
 
   const {
     autoStart = true,
@@ -43,6 +46,7 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
   const configRef = useRef<ScreenCaptureConfig>(lockConfiguration({
     useLowResolution: true,
     captureWithAudio: false,
+    requestFrameRate: 60,
     disableAdvancedSDK: suppressPermissionPrompt
   }));
 
@@ -76,13 +80,27 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
       captureInProgressRef.current = true;
       logDebug("[useScreenCapture] Triggering screenshot capture...");
 
+      const incrementSuccessCount = () => {
+        successCountRef.current += 1;
+        return successCountRef.current;
+      };
+
+      const incrementFailureCount = () => {
+        failureCountRef.current += 1;
+        return failureCountRef.current;
+      };
+
+      const setLastCaptureUrl = (url: string) => {
+        lastCaptureUrlRef.current = url;
+      };
+
       const url = await captureScreen(
         mediaStreamRef.current,
         status,
         () => ++captureCountRef.current,
-        () => {},
-        () => {},
-        () => {}
+        incrementSuccessCount,
+        incrementFailureCount,
+        setLastCaptureUrl
       );
 
       captureInProgressRef.current = false;
@@ -185,6 +203,8 @@ export const useScreenCapture = (countdownSeconds = 10, config?: CaptureConfig) 
     hasMediaStream: !!mediaStreamRef.current,
     lastError: error?.message || null,
     captures: captureCountRef.current,
+    successful: successCountRef.current,
+    failed: failureCountRef.current,
     interval
   }), [status, countdown, error, interval]);
 

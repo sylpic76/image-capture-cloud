@@ -39,7 +39,7 @@ export async function uploadScreenshot(blob: Blob, captureId?: number): Promise<
       });
 
     if (error) {
-      logError("[uploadUtils] ❌ Upload failed", error);
+      logError(`[uploadUtils] ❌ Upload failed: ${error.message}`);
       return null;
     }
 
@@ -51,14 +51,30 @@ export async function uploadScreenshot(blob: Blob, captureId?: number): Promise<
       .createSignedUrl(fileName, 3600); // valid for 1 hour
 
     if (signedError || !signed?.signedUrl) {
-      logError("[uploadUtils] ❌ Could not get signed URL", signedError);
+      logError(`[uploadUtils] ❌ Could not get signed URL: ${signedError?.message || 'Unknown error'}`);
       return null;
     }
 
     logDebug(`[uploadUtils] ✅ Signed URL created: ${signed.signedUrl.substring(0, 50)}...`);
+    
+    // Insert record in database
+    try {
+      const { error: insertError } = await supabase
+        .from("screenshot_log")
+        .insert({ image_url: signed.signedUrl });
+        
+      if (insertError) {
+        logError(`[uploadUtils] ⚠️ Failed to record in database, but upload succeeded: ${insertError.message}`);
+      } else {
+        logDebug(`[uploadUtils] ✅ Screenshot logged to database`);
+      }
+    } catch (dbError) {
+      logError(`[uploadUtils] ⚠️ Database operation failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
+    }
+    
     return signed.signedUrl;
   } catch (err) {
-    logError("[uploadUtils] Unexpected error during upload", err);
+    logError(`[uploadUtils] Unexpected error during upload: ${err instanceof Error ? err.message : 'Unknown error'}`);
     return null;
   }
 }

@@ -71,11 +71,12 @@ export const captureScreen = async (
       incrementSuccessCount();
 
       logDebug(`[captureScreen] ✅ Capture #${captureId} completed and uploaded: ${url}`);
+      toast.success("Capture d'écran prise avec succès");
       return url;
       
     } catch (error) {
       retryCount++;
-      logError(`[captureScreen] Capture failed (attempt ${retryCount}/${maxRetries + 1})`, error);
+      logError(`[captureScreen] Capture failed (attempt ${retryCount}/${maxRetries + 1}): ${error instanceof Error ? error.message : 'Unknown error'}`);
       
       if (retryCount > maxRetries) {
         incrementFailureCount();
