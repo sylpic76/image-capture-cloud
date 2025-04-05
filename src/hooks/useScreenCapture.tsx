@@ -144,7 +144,8 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
       }
     } catch (e) {
       const errorObj = e instanceof Error ? e : new Error("Unknown error");
-      logError(`Error during capture initialization: ${errorObj.message}`);
+      // Call logError with the correct signature - message as first param, error object as second param
+      logError("Error during capture initialization", errorObj);
       setError(errorObj);
       setStatus("error");
     }
