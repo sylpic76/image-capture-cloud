@@ -62,6 +62,15 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     logDebug("Status set to: requesting-permission");
   }, []);
 
+  // Fonction de capture conditionnelle pour le timer
+  const timerCallback = useCallback(() => {
+    if (status === "active") {
+      takeScreenshot();
+    } else {
+      logDebug("[useScreenCapture] Skipping capture - status is not active");
+    }
+  }, [status]);
+
   // Callback pour déclencher une capture
   const takeScreenshot = useCallback(async () => {
     logDebug("[useScreenCapture] 🔔 Trigger capture");
@@ -99,10 +108,8 @@ export const useScreenCapture = (defaultCountdown = 10, config?: CaptureConfig) 
     }
   }, [status, autoUpload, offline, captureCount]);
 
-  // Timer toutes les X secondes
-  const { countdown, setCountdown } = useTimer(
-    takeScreenshot
-  );
+  // Timer toutes les X secondes - using the conditional timer callback
+  const { countdown, setCountdown } = useTimer(timerCallback);
 
   // Initialiser stream / permission
   const {
