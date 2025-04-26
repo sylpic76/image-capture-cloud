@@ -11,8 +11,8 @@ import MobileTabView from "@/components/UnifiedApp/MobileTabView";
 const UnifiedApp = () => {
   const isMobile = useIsMobile();
 
-  // Screen capture config
-  const captureInterval = 10;
+  // Screen capture config - changed from 10 to 1 second
+  const captureInterval = 1;
 
   const {
     status,
@@ -22,7 +22,7 @@ const UnifiedApp = () => {
     sdkDisabled
   } = useScreenCapture(captureInterval, {
     interval: captureInterval,
-    autoStart: false // Explicitement à false pour ne démarrer que via le bouton
+    autoStart: false
   });
 
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
